@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KESALE CUP 2026 - Masterpiece v41 FULL</title>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+    :root { 
+        --accent: #2563eb; --accent-glow: rgba(37, 99, 235, 0.25);
+        --success: #10b981; --danger: #ef4444; 
+        --gold: #f59e0b; --gold-glow: rgba(245,158,11,0.25);
+        --bg-dark: #020617; --card-bg: rgba(30, 41, 59, 0.5); 
+        --modal-bg: #1e293b; --ref-blue: #3b82f6; --ref-green: #10b981;
+    }
+    
+    body { font-family: 'Poppins', sans-serif; margin: 0; background-color: var(--bg-dark); color: white; padding-bottom: 20px; overflow-x: hidden; }
+
+    .hero { 
+        background: linear-gradient(rgba(2, 6, 23, 0.75), rgba(2, 6, 23, 0.9)), 
+                    url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80');
+        background-size: cover; background-position: center; padding: 80px 20px; text-align: center; border-bottom: 2px solid var(--accent);
+    }
+    .hero h1 { font-size: 3.5rem; margin: 0; color: var(--gold); text-transform: uppercase; font-weight: 800; cursor: pointer; text-shadow: 0 5px 15px rgba(0,0,0,0.6); }
+    .hero p { max-width: 850px; margin: 25px auto; color: #e2e8f0; font-size: 1rem; line-height: 1.8; font-weight: 300; }
+
+    nav { 
+        display: flex; justify-content: center; overflow-x: auto; background: rgba(15, 23, 42, 0.9); padding: 15px; position: sticky; 
+        top: 0; z-index: 100; gap: 10px; backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    nav::-webkit-scrollbar { display: none; }
+    nav button { white-space: nowrap; padding: 10px 22px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.1); background: transparent; color: #94a3b8; cursor: pointer; font-weight: 600; font-size: 12px; transition: 0.3s; }
+    nav button.active-btn { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 4px 15px var(--accent-glow); }
+
+    section { display: none; padding: 30px 20px; max-width: 1000px; margin: 0 auto; animation: fadeInUp 0.5s ease-out; }
+    .active { display: block; }
+    @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+
+    .card { background: var(--card-bg); padding: 20px; border-radius: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(12px); box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
+    h2 { font-size: 1.6rem; font-weight: 700; color: #f8fafc; margin-bottom: 30px; text-align: center; text-transform: uppercase; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { color: #94a3b8; padding: 15px 10px; border-bottom: 1px solid #334155; font-weight: 600; text-transform: uppercase; }
+    td { padding: 15px 10px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.03); color: #cbd5e1; }
+
+    .live-dot { color: var(--danger); animation: blink 1s infinite; font-weight: 800; }
+    @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+    .score-row-live { display: flex; justify-content: space-between; align-items: center; margin: 15px 0 5px 0; }
+    .score-box-live { font-size: 2.2rem; font-weight: 900; color: var(--gold); background: rgba(0,0,0,0.4); padding: 5px 20px; border-radius: 15px; border: 2px solid var(--accent); min-width: 90px; text-align: center; }
+    .stat-line-live { margin: 12px 0; }
+    .bar-outer-live { height: 10px; background: rgba(255,255,255,0.1); border-radius: 5px; display: flex; overflow: hidden; margin-top: 5px; }
+    .bar-h-live { background: var(--accent); height: 100%; transition: 0.5s; }
+    .bar-a-live { background: var(--danger); height: 100%; transition: 0.5s; }
+    .goal-log-live { font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; margin-bottom: 15px; padding: 0 10px; font-style: italic; }
+
+    .rank-badge { display: inline-block; background: rgba(255,255,255,0.07); padding: 6px 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); color: var(--gold); font-weight: 800; }
+    .stat-row { display: flex; justify-content: space-between; margin: 15px 0; font-size: 14px; align-items: center; }
+    .bar-bg { background: #0c111d; height: 12px; border-radius: 6px; overflow: hidden; width: 100%; margin-top: 8px; position: relative; }
+    .bar-fill { height: 100%; border-radius: 6px; position: absolute; top: 0; left: 0; transition: 1s; }
+    .form-dot { display: inline-block; width: 28px; height: 28px; border-radius: 6px; margin: 3px; font-size: 12px; line-height: 28px; text-align: center; font-weight: 800; color: white; }
+    
+    .fixture-info-bar { display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; margin-bottom: 12px; font-weight: 600; text-transform: uppercase; }
+    .fixture-box { display: flex; justify-content: space-between; align-items: center; }
+    .fixture-team { flex: 1; font-weight: 600; font-size: 1rem; color: #fff; }
+    .fixture-score-box { background: rgba(15, 23, 42, 0.7); padding: 8px 18px; border-radius: 12px; border: 1.5px solid var(--accent); color: white; font-weight: 800; min-width: 55px; text-align: center; margin: 0 20px; }
+
+    .admin-grid-live { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
+    .admin-item-live { background: rgba(0,0,0,0.3); padding: 10px; border-radius: 12px; border: 1px solid #334155; }
+    .admin-item-live label { display: block; font-size: 10px; color: #94a3b8; text-transform: uppercase; }
+    .admin-item-live input, .admin-item-live textarea, .admin-item-live select { width: 100%; background: transparent; border: none; border-bottom: 1.5px solid var(--accent); color: white; font-size: 16px; font-weight: 700; outline: none; }
+    .admin-input { background: #1e293b; border: 1px solid #334155; color: white; padding: 12px; border-radius: 10px; width: 100%; margin: 8px 0; box-sizing: border-box; }
+    .btn-save { background: var(--success); color: white; border: none; padding: 14px; border-radius: 10px; cursor: pointer; width: 100%; margin-top: 15px; font-weight: 700; }
+    .tag-remove { background: var(--danger); color: white; border: none; border-radius: 4px; padding: 2px 6px; cursor: pointer; margin-left: 8px; font-size: 10px; }
+
+    .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--modal-bg); padding: 40px; border-radius: 24px; z-index: 1000; width: 90%; max-width: 420px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 25px 70px rgba(0,0,0,0.7); backdrop-filter: blur(10px); }
+    .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.88); z-index: 999; backdrop-filter: blur(6px); }
+    .footer { text-align: center; padding: 40px 20px; color: #64748b; font-size: 13px; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 50px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+    <h1 onclick="showSec('admin', document.getElementById('btnUpdates'))">KESALE CUP 2026</h1>
+    <p>Prestigious tournament by Dr. Anosisye Kesale fostering talent and unity. The winning team is awarded a cow.</p>
+</div>
+
+<nav>
+    <button onclick="showSec('teams', this)" class="active-btn">TEAMS</button>
+    <button onclick="showSec('groups', this)">STANDINGS</button>
+    <button onclick="showSec('fixtures', this)">FIXTURES</button>
+    <button onclick="showSec('live-match', this)" style="color:var(--danger); border-color:var(--danger)">● LIVE</button>
+    <button onclick="showSec('semis', this)">SEMI FINAL</button>
+    <button onclick="showSec('final', this)">FINAL</button>
+    <button onclick="showSec('leaderboard', this)">LEADERBOARD</button>
+    <button onclick="showSec('updates', this)" id="btnUpdates">UPDATES</button>
+</nav>
+
+<section id="teams" class="active"></section>
+<section id="groups"></section>
+<section id="fixtures"></section>
+<section id="live-match"><h2>Live Match Updates</h2><div id="live-container"></div></section>
+<section id="semis"></section>
+<section id="final"></section>
+<section id="leaderboard"></section>
+<section id="updates"><h2>Latest Updates</h2><div id="updatesList"></div></section>
+
+<section id="admin">
+    <div id="loginBox" class="card" style="max-width: 400px; margin: auto;">
+        <h3 style="text-align:center">Admin Control</h3>
+        <input id="user" placeholder="Admin Username" class="admin-input">
+        <input id="pass" type="password" placeholder="Password" class="admin-input">
+        <button onclick="login()" class="btn-save" style="background:var(--accent)">Login</button>
+    </div>
+    <div id="adminPanel" style="display:none"></div>
+</section>
+
+<div class="footer">All rights reserved, a product by Rished Kassim</div>
+<div class="overlay" id="overlay" onclick="closeModal()"></div>
+<div class="modal" id="teamModal"></div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAdqvG4rf46xvyO28D80W5VrNlCgH3SDnU",
+  authDomain: "kesale-cup.firebaseapp.com",
+  projectId: "kesale-cup",
+  storageBucket: "kesale-cup.firebasestorage.app",
+  messagingSenderId: "870168178701",
+  appId: "1:870168178701:web:71e044c4fd1d6d9fea6544"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let data = { teams: [], groups: {}, fixtures: [], results: {}, scorers: [], gks: [], ko: { s1: {}, s2: {}, f: {} }, posts: [] };
+let liveEngine = { matches: {} }; 
+window.isAdminEditing = false;
+
+async function load() {
+    db.collection("kesale").doc("live").onSnapshot(doc => {
+        if(doc.exists) { data = doc.data(); renderAll(); }
+    });
+    db.collection("kesale").doc("live_engine").onSnapshot(doc => {
+        if(doc.exists) {
+            liveEngine = doc.data();
+            renderLive();
+            if(document.getElementById('adminPanel').style.display === 'block' && !window.isAdminEditing) renderAdmin();
+        }
+    });
+}
+
+// PERIOD-BASED CLOCK ENGINE
+setInterval(() => {
+    let needsSync = false;
+    Object.keys(liveEngine.matches).forEach(id => {
+        const m = liveEngine.matches[id];
+        if(m.running) {
+            let limit = 45;
+            if(m.status === '2H') limit = 90;
+            if(m.status === 'ET1') limit = 105;
+            if(m.status === 'ET2') limit = 120;
+            if(m.status === 'HT' || m.status === 'FT' || m.status === 'PEN') return;
+
+            if (m.m >= (limit + (parseInt(m.extra) || 0))) return;
+            
+            m.s++; if(m.s >= 60) { m.m++; m.s = 0; }
+            needsSync = true;
+        }
+    });
+    if(needsSync) {
+        renderLive();
+        Object.keys(liveEngine.matches).forEach(id => {
+            const el = document.getElementById(`live-timer-${id}`);
+            if(el) el.innerText = formatLiveClock(liveEngine.matches[id]);
+        });
+    }
+}, 1000);
+
+function formatLiveClock(m) {
+    if (m.status === 'HT') return 'HALFTIME';
+    if (m.status === 'FT') return 'FULLTIME';
+    if (m.status === 'PEN') return 'PENALTIES';
+    
+    if (m.status === '1H' && m.m >= 45) return `45:00 +${m.extra || 0}`;
+    if (m.status === '2H' && m.m >= 90) return `90:00 +${m.extra || 0}`;
+    if (m.status === 'ET1' && m.m >= 105) return `105:00 +${m.extra || 0}`;
+    if (m.status === 'ET2' && m.m >= 120) return `120:00 +${m.extra || 0}`;
+    
+    return `${m.m}:${m.s < 10 ? '0'+m.s : m.s}`;
+}
+
+function showSec(id, btn) {
+    document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active-btn'));
+    document.getElementById(id).classList.add('active');
+    if(btn) btn.classList.add('active-btn');
+    window.isAdminEditing = false;
+    window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function getStats(name) {
+    let mp=0, w=0, d=0, l=0, gf=0, ga=0, form=[];
+    data.fixtures.forEach((f, i) => {
+        if(data.results[i] && (f.home === name || f.away === name)) {
+            let parts = data.results[i].split('-');
+            if(parts.length === 2) {
+                let h = parseInt(parts[0]), a = parseInt(parts[1]); mp++;
+                if(f.home === name) { gf+=h; ga+=a; if(h>a) w++; else if(h===a) d++; else l++; form.push(h>a?'W':h===a?'D':'L'); }
+                else { gf+=a; ga+=h; if(a>h) w++; else if(a===h) d++; else l++; form.push(a>h?'W':a===h?'D':'L'); }
+            }
+        }
+    });
+    let pts = (w*3)+d;
+    let strength = mp > 0 ? Math.min(100, ((pts/(mp*3))*50) + (Math.max(0, (gf-ga+10)*2.5))).toFixed(0) : 0;
+    let qChance = mp > 0 ? Math.min(100, (pts/(mp*3)*100)).toFixed(0) : 0;
+    return { mp, w, d, l, gf, ga, gd: gf-ga, pts, strength, qChance, form: form.slice(-5) };
+}
+
+function renderAll() {
+    document.getElementById('teams').innerHTML = "<h2>Clubs</h2>" + data.teams.map(t => `<div class="card" onclick="openTeam('${t}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center"><span style="font-weight:600">${t}</span> <span style="color:var(--accent); font-weight:800;">&rsaquo;</span></div>`).join('');
+
+    let gHtml = "";
+    Object.keys(data.groups).sort().forEach(g => {
+        let sorted = [...data.groups[g]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd);
+        gHtml += `<div class="card"><h3>Group ${g}</h3><table><tr><th>Pos</th><th style="text-align:left">Team</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th></tr>`;
+        sorted.forEach((t, i) => { let s = getStats(t); gHtml += `<tr><td>${i+1}</td><td style="text-align:left; font-weight:bold; color:white">${t}</td><td>${s.mp}</td><td>${s.w}</td><td>${s.d}</td><td>${s.l}</td><td>${s.gf}</td><td>${s.ga}</td><td>${s.gd}</td><td><b style="color:var(--gold)">${s.pts}</b></td></tr>`; });
+        gHtml += `</table></div>`;
+    });
+    document.getElementById('groups').innerHTML = gHtml;
+
+    document.getElementById('fixtures').innerHTML = "<h2>Schedule</h2>" + data.fixtures.map((f,i) => `
+        <div class="card"><div class="fixture-info-bar"><span>GRP ${f.group} • ${f.date || 'TBA'} • ${f.time || '--:--'}</span><span>${f.pitch || 'Field'}</span></div>
+        <div class="fixture-box"><span class="fixture-team" style="text-align:right">${f.home}</span><span class="fixture-score-box">${data.results[i] || 'VS'}</span><span class="fixture-team" style="text-align:left">${f.away}</span></div></div>`).join('');
+
+    const grps = Object.keys(data.groups).sort();
+    let s1H = '1st A', s1A = '2nd B', s2H = '1st B', s2A = '2nd A';
+    if(grps.length >= 2) {
+        s1H = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[0] || '1st A';
+        s1A = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[1] || '2nd B';
+        s2H = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[0] || '1st B';
+        s2A = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[1] || '2nd A';
+    }
+    document.getElementById('semis').innerHTML = `<h2>Semi-Finals</h2>
+        <div class="card"><div style="font-size:11px; text-align:center; color:#94a3b8; margin-bottom:10px;">${data.ko.s1.dt||''} ${data.ko.s1.tm||''}</div><div class="fixture-box"><span class="fixture-team" style="text-align:right">${s1H}</span><span class="fixture-score-box">${data.ko.s1.res || 'VS'}</span><span class="fixture-team" style="text-align:left">${s1A}</span></div></div>
+        <div class="card"><div style="font-size:11px; text-align:center; color:#94a3b8; margin-bottom:10px;">${data.ko.s2.dt||''} ${data.ko.s2.tm||''}</div><div class="fixture-box"><span class="fixture-team" style="text-align:right">${s2H}</span><span class="fixture-score-box">${data.ko.s2.res || 'VS'}</span><span class="fixture-team" style="text-align:left">${s2A}</span></div></div>`;
+    
+    document.getElementById('final').innerHTML = `<h2>Grand Final</h2><div class="card" style="text-align:center; border:1px solid var(--gold);"><div class="fixture-box"><span class="fixture-team" style="text-align:right">${data.ko.s1.win || 'SF1 Winner'}</span><span class="fixture-score-box" style="border-color:var(--gold)">${data.ko.f.res || 'VS'}</span><span class="fixture-team" style="text-align:left">${data.ko.s2.win || 'SF2 Winner'}</span></div><h1 style="color:var(--gold)">${data.ko.f.win || '???'}</h1></div>`;
+
+    document.getElementById('leaderboard').innerHTML = `<div class="card"><h3>Golden Boot</h3>${data.scorers.sort((a,b)=>b.g-a.g).map(s=>`<div class="stat-row"><span>${s.n} (${s.t})</span><b style="color:var(--gold)">${s.g} G</b></div>`).join('')}</div><div class="card"><h3>Golden Glove</h3>${data.gks.sort((a,b)=>b.c-a.c).map(g=>`<div class="stat-row"><span>${g.n} (${g.t})</span><b style="color:var(--success)">${g.c} CS</b></div>`).join('')}</div>`;
+
+    document.getElementById('updatesList').innerHTML = data.posts.map(p => `<div class="card"><small style="color:var(--accent)">${p.date}</small><h4>${p.title}</h4><p>${p.text}</p></div>`).join('');
+}
+
+function renderLive() {
+    const cont = document.getElementById('live-container');
+    let html = "";
+    Object.keys(liveEngine.matches).forEach(id => {
+        const m = liveEngine.matches[id]; if(!m.active) return;
+        html += `<div class="card"><div style="display:flex; justify-content:space-between;"><span class="live-dot">● ${m.status}</span><span style="font-weight:800; color:var(--danger)">${formatLiveClock(m)}</span></div>
+            <div class="score-row-live"><div class="team-name" style="text-align:right; flex:1">${m.hName}</div><div class="score-box-live">${m.hG} - ${m.aG}</div><div class="team-name" style="text-align:left; flex:1">${m.aName}</div></div>
+            <div class="goal-log-live"><div style="text-align:right; width:45%">${m.hGoals.replace(/\n/g,'<br>')}</div><div style="text-align:left; width:45%">${m.aGoals.replace(/\n/g,'<br>')}</div></div>
+            <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">${statBarLive("Possession", m.hP, m.aP, true)}${statBarLive("Shots On", m.hSo, m.aSo)}${statBarLive("Shots Off", m.hSf, m.aSf)}${statBarLive("Corners", m.hC, m.aC)}${statBarLive("Fouls", m.hF, m.aF)}<div style="display:flex; justify-content:space-between; margin-top:10px; font-size:12px;"><span>🟨 ${m.hY} 🟥 ${m.hR}</span><b>CARDS</b><span>🟨 ${m.aY} 🟥 ${m.aR}</span></div></div></div>`;
+    });
+    cont.innerHTML = html || "<center style='color:#64748b; padding:20px;'>No matches currently live.</center>";
+}
+
+function statBarLive(l, h, a, p=false) { const total = (parseInt(h)+parseInt(a)) || 1; return `<div class="stat-line-live"><div style="display:flex; justify-content:space-between; font-size:10px;"><span>${h}${p?'%':''}</span><span>${l}</span><span>${a}${p?'%':''}</span></div><div class="bar-outer-live"><div class="bar-h-live" style="width:${(h/total)*100}%"></div><div class="bar-a-live" style="width:${(a/total)*100}%"></div></div></div>`; }
+
+function openTeam(name) {
+    const s = getStats(name); const all = data.teams.map(t => ({n:t, p:getStats(t).pts, g:getStats(t).gd})).sort((a,b)=>b.p-a.p || b.g-a.g);
+    const rank = all.findIndex(x => x.n === name) + 1;
+    document.getElementById('teamModal').innerHTML = `<h2 style="margin:0">${name}</h2><div class="stat-row"><span>Rank</span><span class="rank-badge">${rank}</span></div><div class="stat-row"><span>Strength</span><b>${s.strength}%</b></div><div class="bar-bg"><div class="bar-fill" style="width:${s.strength}%; background:var(--ref-blue)"></div></div><div class="stat-row" style="margin-top:15px"><span>Qualify Chance</span><b>${s.qChance}%</b></div><div class="bar-bg"><div class="bar-fill" style="width:${s.qChance}%; background:var(--ref-green)"></div></div><div style="text-align:center; margin-top:20px">${s.form.map(f => `<span class="form-dot" style="background:${f==='W'?'var(--success)':f==='L'?'var(--danger)':'#475569'}">${f}</span>`).join('')}</div><button onclick="closeModal()" class="btn-save" style="background:rgba(255,255,255,0.1); margin-top:20px">Close</button>`;
+    document.getElementById('teamModal').style.display = 'block'; document.getElementById('overlay').style.display = 'block';
+}
+function closeModal() { document.getElementById('teamModal').style.display='none'; document.getElementById('overlay').style.display='none'; }
+
+function login() { if(user.value==="ARSHAD" && pass.value==="DAPROO16") { loginBox.style.display="none"; adminPanel.style.display="block"; renderAdmin(); }}
+
+function renderAdmin() {
+    const grps = Object.keys(data.groups).sort();
+    let s1H = '1st A', s1A = '2nd B', s2H = '1st B', s2A = '2nd A';
+    if(grps.length >= 2) {
+        s1H = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[0] || '1st A';
+        s1A = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[1] || '2nd B';
+        s2H = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[0] || '1st B';
+        s2A = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[1] || '2nd A';
+    }
+
+    let html = `
+    <div class="card" style="border:1.5px solid var(--danger)">
+        <h3 style="color:var(--danger)">1. LIVE MATCH ENGINE</h3>
+        <select id="liveMatchSelect" class="admin-input">${data.fixtures.map((f,i)=>`<option value="${i}">${f.home} vs ${f.away}</option>`).join('')}</select>
+        <button onclick="startLiveMatch()" class="btn-save" style="background:var(--danger)">Create Live Session</button>
+        <div id="liveAdminList">${Object.keys(liveEngine.matches).map(id => {
+            const m = liveEngine.matches[id];
+            return `<div class="card" oninput="window.isAdminEditing=true" style="border-left:4px solid var(--accent); margin-top:15px">
+                <div style="display:flex; justify-content:space-between"><b>${m.hName} vs ${m.aName}</b><button onclick="toggleLiveActive('${id}')" style="background:${m.active?'var(--danger)':'var(--success)'}; color:white; border:none; padding:4px 8px; border-radius:4px;">${m.active?'OFF':'GO LIVE'}</button></div>
+                <div style="text-align:center; margin:10px 0;"><button onclick="toggleLiveClock('${id}')" class="btn-save" style="padding:6px; margin:0; background:var(--accent); width:auto;">${m.running?'Stop Clock':'Start Clock'}</button><h2 id="live-timer-${id}">${formatLiveClock(m)}</h2></div>
+                <div class="admin-grid-live">
+                    ${liveInput(id, 'hG', 'Home Score')} ${liveInput(id, 'aG', 'Away Score')}
+                    <div class="admin-item-live"><label>Home Scorers</label><textarea id="hGoals-${id}">${m.hGoals}</textarea></div>
+                    <div class="admin-item-live"><label>Away Scorers</label><textarea id="aGoals-${id}">${m.aGoals}</textarea></div>
+                    ${liveInput(id, 'hP', 'H Poss%')} ${liveInput(id, 'aP', 'A Poss%')}
+                    ${liveInput(id, 'hSo', 'H S.On')} ${liveInput(id, 'aSo', 'A S.On')}
+                    ${liveInput(id, 'hSf', 'H S.Off')} ${liveInput(id, 'aSf', 'A S.Off')}
+                    ${liveInput(id, 'hC', 'H Corn')} ${liveInput(id, 'aC', 'A Corn')}
+                    ${liveInput(id, 'hF', 'H Foul')} ${liveInput(id, 'aF', 'A Foul')}
+                    ${liveInput(id, 'hY', 'H Yel')} ${liveInput(id, 'aY', 'A Yel')}
+                    ${liveInput(id, 'hR', 'H Red')} ${liveInput(id, 'aR', 'A Red')}
+                    <div class="admin-item-live"><label>Extra Time (+)</label><input type="number" id="extra-${id}" value="${m.extra}"></div>
+                    <div class="admin-item-live"><label>Period</label>
+                        <select id="status-${id}" style="width:100%; background:var(--modal-bg); color:white; border:none;">
+                            <option value="1H" ${m.status==='1H'?'selected':''}>1st Half (0-45)</option>
+                            <option value="HT" ${m.status==='HT'?'selected':''}>Half Time</option>
+                            <option value="2H" ${m.status==='2H'?'selected':''}>2nd Half (45-90)</option>
+                            <option value="ET1" ${m.status==='ET1'?'selected':''}>ET 1 (90-105)</option>
+                            <option value="ET2" ${m.status==='ET2'?'selected':''}>ET 2 (105-120)</option>
+                            <option value="PEN" ${m.status==='PEN'?'selected':''}>Penalties</option>
+                            <option value="FT" ${m.status==='FT'?'selected':''}>Full Time</option>
+                        </select>
+                    </div>
+                </div>
+                <button onclick="pushLiveUpdate('${id}')" class="btn-save">PUSH UPDATE</button>
+                <button onclick="deleteLiveMatch('${id}')" style="background:transparent; color:var(--danger); border:none; width:100%; margin-top:10px;">Remove Control</button>
+            </div>`;
+        }).join('')}</div>
+    </div>
+
+    <div class="card"><h3>2. NEWS POST</h3><input id="upTitle" placeholder="Title" class="admin-input"><textarea id="upText" placeholder="Content" class="admin-input"></textarea><button onclick="addPost()" class="btn-save">Post News</button></div>
+
+    <div class="card"><h3>3. GROUPS & TEAMS</h3>
+        <input id="adG" placeholder="Group Letter" class="admin-input"><button onclick="addGroup()" style="margin-bottom:10px">+ Add Group</button>
+        <input id="adT" placeholder="Team Name" class="admin-input"><button onclick="addTeam()">+ Add Team</button>
+        <div style="margin:15px 0">${Object.keys(data.groups).map(g => `<b>Group ${g}:</b> ${data.groups[g].map((t,i)=>`<span>${t}<button class="tag-remove" onclick="removeFromGroup('${g}',${i})">x</button></span>`).join(', ')}<br>`).join('')}</div>
+        <select id="selT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select>
+        <select id="selG" class="admin-input">${Object.keys(data.groups).map(g=>`<option>${g}</option>`).join('')}</select>
+        <button onclick="assign()" class="btn-save">Confirm Assignment</button>
+    </div>
+
+    <div class="card"><h3>4. MATCH RESULTS (Group Stage)</h3>
+        <div style="max-height:400px; overflow-y:auto">
+            ${data.fixtures.map((f,i)=> `
+                <div style="border-bottom:1px solid #334155; padding:10px 0">
+                    <b>${f.home} vs ${f.away}</b><br>
+                    <div style="display:flex; gap:5px"><input id="dt${i}" value="${f.date||''}" placeholder="Date" class="admin-input"><input id="tm${i}" value="${f.time||''}" placeholder="Time" class="admin-input"><input id="pt${i}" value="${f.pitch||''}" placeholder="Pitch" class="admin-input"></div>
+                    <input id="rs${i}" value="${data.results[i]||''}" placeholder="Score (1-0)" class="admin-input">
+                    <button onclick="updateF(${i})" style="width:100%; padding:8px;">Save Match ${i+1}</button>
+                </div>`).join('')}
+        </div>
+        <button onclick="genFixtures()" class="btn-save" style="background:var(--accent)">Regenerate All Fixtures</button>
+    </div>
+
+    <div class="card"><h3>5. KNOCKOUTS</h3>
+        <b>SF1: ${s1H} vs ${s1A}</b><div style="display:flex; gap:5px"><input id="ks1dt" class="admin-input" placeholder="Date" value="${data.ko.s1.dt||''}"><input id="ks1tm" class="admin-input" placeholder="Time" value="${data.ko.s1.tm||''}"><input id="ks1pt" class="admin-input" placeholder="Pitch" value="${data.ko.s1.pt||''}"></div><input id="ks1rs" class="admin-input" placeholder="Score" value="${data.ko.s1.res||''}">
+        <hr style="opacity:0.1; margin:15px 0">
+        <b>SF2: ${s2H} vs ${s2A}</b><div style="display:flex; gap:5px"><input id="ks2dt" class="admin-input" placeholder="Date" value="${data.ko.s2.dt||''}"><input id="ks2tm" class="admin-input" placeholder="Time" value="${data.ko.s2.tm||''}"><input id="ks2pt" class="admin-input" placeholder="Pitch" value="${data.ko.s2.pt||''}"></div><input id="ks2rs" class="admin-input" placeholder="Score" value="${data.ko.s2.res||''}">
+        <hr style="opacity:0.1; margin:15px 0">
+        <b>FINAL</b><div style="display:flex; gap:5px"><input id="kfdt" class="admin-input" placeholder="Date" value="${data.ko.f.dt||''}"><input id="kftm" class="admin-input" placeholder="Time" value="${data.ko.f.tm||''}"><input id="kfpt" class="admin-input" placeholder="Pitch" value="${data.ko.f.pt||''}"></div><input id="kfrs" class="admin-input" placeholder="Score" value="${data.ko.f.res||''}">
+        <button onclick="updateKO('${s1H}','${s1A}','${s2H}','${s2A}')" class="btn-save">Save Knockouts</button>
+    </div>
+
+    <div class="card"><h3>6. PLAYER STATS</h3>
+        <input id="scN" placeholder="Player Name" class="admin-input"><select id="scT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><input id="scG" placeholder="Quantity" class="admin-input" type="number">
+        <button onclick="addScorer()">Add Goals</button><button onclick="addGK()" style="background:#475569">Add Clean Sheet</button>
+    </div>
+    <button onclick="wipe()" class="btn-save" style="background:var(--danger)">WIPE ALL DATA</button>`;
+    
+    adminPanel.innerHTML = html;
+}
+
+function liveInput(id, field, label) { return `<div class="admin-item-live"><label>${label}</label><input type="number" id="${field}-${id}" value="${liveEngine.matches[id][field] || 0}"></div>`; }
+function startLiveMatch() { const idx = document.getElementById('liveMatchSelect').value; const f = data.fixtures[idx]; const id = "M" + Date.now(); liveEngine.matches[id] = { hName:f.home, aName:f.away, active:false, running:false, m:0, s:0, hG:0, aG:0, hP:50, aP:50, hSo:0, aSo:0, hSf:0, aSf:0, hC:0, aC:0, hF:0, aF:0, hY:0, aY:0, hR:0, aR:0, status:'1H', extra:0, hGoals:'', aGoals:'' }; saveLive(); }
+
+function pushLiveUpdate(id) { 
+    ['hG','aG','hP','aP','hSo','aSo','hSf','aSf','hC','aC','hF','aF','hY','aY','hR','aR'].forEach(f => { liveEngine.matches[id][f] = parseInt(document.getElementById(`${f}-${id}`).value) || 0; });
+    liveEngine.matches[id].hGoals = document.getElementById(`hGoals-${id}`).value;
+    liveEngine.matches[id].aGoals = document.getElementById(`aGoals-${id}`).value;
+    
+    const oldStatus = liveEngine.matches[id].status;
+    const newStatus = document.getElementById(`status-${id}`).value;
+    
+    // Auto-Set Minute based on period jump
+    if (oldStatus !== newStatus) {
+        if (newStatus === '1H') liveEngine.matches[id].m = 0;
+        else if (newStatus === '2H') liveEngine.matches[id].m = 45;
+        else if (newStatus === 'ET1') liveEngine.matches[id].m = 90;
+        else if (newStatus === 'ET2') liveEngine.matches[id].m = 105;
+        liveEngine.matches[id].s = 0;
+    }
+    
+    liveEngine.matches[id].status = newStatus;
+    liveEngine.matches[id].extra = parseInt(document.getElementById(`extra-${id}`).value) || 0;
+    window.isAdminEditing = false; saveLive(); alert("Live Updated!");
+}
+
+function toggleLiveActive(id) { liveEngine.matches[id].active = !liveEngine.matches[id].active; saveLive(); }
+function toggleLiveClock(id) { liveEngine.matches[id].running = !liveEngine.matches[id].running; saveLive(); }
+function deleteLiveMatch(id) { if(confirm("Delete?")) { delete liveEngine.matches[id]; saveLive(); } }
+function saveLive() { db.collection("kesale").doc("live_engine").set(liveEngine).then(renderAdmin); }
+
+function addPost() { data.posts.unshift({ title:upTitle.value, text:upText.value, date:new Date().toLocaleDateString('en-GB') }); save(); }
+function addGroup(){ let g=adG.value.toUpperCase(); if(g && !data.groups[g]){ data.groups[g]=[]; save(); }}
+function addTeam(){ let t=adT.value; if(t && !data.teams.includes(t)){ data.teams.push(t); save(); }}
+function assign(){ if(!data.groups[selG.value].includes(selT.value)){ data.groups[selG.value].push(selT.value); save(); }}
+function removeFromGroup(g, idx) { data.groups[g].splice(idx, 1); save(); }
+function genFixtures() { if(!confirm("Reset?")) return; let list = []; Object.keys(data.groups).sort().forEach(g => { let t = data.groups[g]; for(let i=0; i<t.length; i++) for(let j=i+1; j<t.length; j++) list.push({home:t[i], away:t[j], group:g}); }); data.fixtures = list; save(); }
+function updateF(i) { data.fixtures[i].date=document.getElementById(`dt${i}`).value; data.fixtures[i].time=document.getElementById(`tm${i}`).value; data.fixtures[i].pitch=document.getElementById(`pt${i}`).value; data.results[i]=document.getElementById(`rs${i}`).value; save(); }
+function updateKO(s1H, s1A, s2H, s2A) {
+    let w1='', w2='', wf='';
+    let r1=ks1rs.value.split('-'); if(r1.length===2) w1 = parseInt(r1[0])>parseInt(r1[1])?s1H:s1A;
+    let r2=ks2rs.value.split('-'); if(r2.length===2) w2 = parseInt(r2[0])>parseInt(r2[1])?s2H:s2A;
+    let rf=kfrs.value.split('-'); if(rf.length===2 && w1 && w2) wf = parseInt(rf[0])>parseInt(rf[1])?w1:w2;
+    data.ko.s1={dt:ks1dt.value, tm:ks1tm.value, pt:ks1pt.value, res:ks1rs.value, win:w1};
+    data.ko.s2={dt:ks2dt.value, tm:ks2tm.value, pt:ks2pt.value, res:ks2rs.value, win:w2};
+    data.ko.f={dt:kfdt.value, tm:kfpt.value, res:kfrs.value, win:wf};
+    save();
+}
+function addScorer(){ let n=scN.value.trim(), t=scT.value, v=parseInt(scG.value); let ex=data.scorers.find(s=>s.n.toLowerCase()===n.toLowerCase() && s.t===t); if(ex) ex.g+=v; else data.scorers.push({n:n, t:t, g:v}); save(); }
+function addGK(){ let n=scN.value.trim(), t=scT.value, v=parseInt(scG.value); let ex=data.gks.find(g=>g.n.toLowerCase()===n.toLowerCase() && g.t===t); if(ex) ex.c+=v; else data.gks.push({n:n, t:t, c:v}); save(); }
+function save() { db.collection("kesale").doc("live").set(data).then(() => { renderAll(); if(adminPanel.style.display==='block') renderAdmin(); }); }
+async function wipe() { if(confirm("Permanent delete?")) { await db.collection("kesale").doc("live").delete(); location.reload(); } }
+
+load();
+</script>
+</body>
+</html>
