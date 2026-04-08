@@ -19,6 +19,14 @@
     
     body { font-family: 'Poppins', sans-serif; margin: 0; background-color: var(--bg-dark); color: white; padding-bottom: 20px; overflow-x: hidden; }
 
+    #toast {
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        background: var(--success); color: white; padding: 12px 25px; border-radius: 50px;
+        font-weight: 600; z-index: 2000; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        display: none; animation: slideUp 0.3s ease-out;
+    }
+    @keyframes slideUp { from { bottom: -50px; opacity: 0; } to { bottom: 20px; opacity: 1; } }
+
     .hero { 
         background: linear-gradient(rgba(2, 6, 23, 0.75), rgba(2, 6, 23, 0.9)), 
                     url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80');
@@ -81,6 +89,8 @@
 </head>
 <body>
 
+<div id="toast">Success! Data Updated.</div>
+
 <div class="hero">
     <h1 onclick="showSec('admin', document.getElementById('btnUpdates'))">KESALE CUP 2026</h1>
     <p>Prestigious tournament by Dr. Anosisye Kesale fostering talent and unity. The winning team is awarded a cow.</p>
@@ -116,7 +126,7 @@
     <div id="adminPanel" style="display:none"></div>
 </section>
 
-<div class="footer">All rights reserved, a product by Rished Kassim</div>
+<div class="footer">All rights reserved, a product by Rished Kassimu</div>
 <div class="overlay" id="overlay" onclick="closeModal()"></div>
 <div class="modal" id="teamModal"></div>
 
@@ -137,6 +147,13 @@ let data = { teams: [], groups: {}, fixtures: [], results: {}, scorers: [], gks:
 let liveEngine = { matches: {} }; 
 window.isAdminEditing = false;
 
+function notify(msg = "Success! Data Updated.") {
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+
 function login() {
     const email = document.getElementById('user').value.trim();
     const password = document.getElementById('pass').value;
@@ -147,6 +164,7 @@ function login() {
     .then(() => {
         document.getElementById('loginBox').style.display = "none";
         document.getElementById('adminPanel').style.display = "block";
+        notify("Logged in successfully!");
         renderAdmin();
     })
     .catch((error) => {
@@ -163,7 +181,6 @@ async function load() {
         if(doc.exists) {
             liveEngine = doc.data();
             renderLive();
-            // Sync Admin Tab if Open
             if(document.getElementById('adminPanel').style.display === 'block') {
                  if(!window.isAdminEditing) renderAdmin();
                  else updateAdminClocks(); 
@@ -173,43 +190,32 @@ async function load() {
     auth.signOut();
 }
 
-// MASTER TIMER LOGIC (Runs for both Public and Admin)
 setInterval(() => {
     let needsSync = false;
     Object.keys(liveEngine.matches).forEach(id => {
         const m = liveEngine.matches[id];
         if(m.running) {
+            let extraMins = parseInt(m.extra) || 0;
             let limit = 45;
             if(m.status === '2H') limit = 90;
             if(m.status === 'ET1') limit = 105;
             if(m.status === 'ET2') limit = 120;
-            
             if(['HT','FT','PEN'].includes(m.status)) return;
-
             m.s++; if(m.s >= 60) { m.m++; m.s = 0; }
-            
-            if (m.m >= (limit + (parseInt(m.extra) || 0)) && (m.s >= 0)) {
-                m.running = false;
-            }
+            if (m.m >= (limit + extraMins) && (m.s >= 0)) { m.running = false; }
             needsSync = true;
         }
     });
-    if(needsSync) { 
-        renderLive(); 
-        updateAdminClocks(); // Update clock display in Admin tab every second
-    }
+    if(needsSync) { renderLive(); updateAdminClocks(); }
 }, 1000);
 
-// NEW: Updates clock display in Admin panel without re-rendering everything
 function updateAdminClocks() {
     Object.keys(liveEngine.matches).forEach(id => {
         const m = liveEngine.matches[id];
         const clockEl = document.getElementById(`clockDisplay-${id}`);
         const mInput = document.getElementById(`m-${id}`);
         const sInput = document.getElementById(`s-${id}`);
-        
         if(clockEl) clockEl.innerText = formatLiveClock(m);
-        // Sync inputs if not currently being typed in
         if(mInput && document.activeElement !== mInput) mInput.value = m.m;
         if(sInput && document.activeElement !== sInput) sInput.value = m.s;
     });
@@ -219,24 +225,13 @@ function formatLiveClock(m) {
     if (m.status === 'HT') return 'HT';
     if (m.status === 'FT') return 'FT';
     if (m.status === 'PEN') return 'PEN';
-    
     let displayMin = m.m;
     let extraStr = "";
-    
-    if (m.status === '1H' && m.m >= 45) {
-        displayMin = 45;
-        extraStr = ` +${m.m - 45}'`; 
-    } else if (m.status === '2H' && m.m >= 90) {
-        displayMin = 90;
-        extraStr = ` +${m.m - 90}'`;
-    } else if (m.status === 'ET1' && m.m >= 105) {
-        displayMin = 105;
-        extraStr = ` +${m.m - 105}'`;
-    } else if (m.status === 'ET2' && m.m >= 120) {
-        displayMin = 120;
-        extraStr = ` +${m.m - 120}'`;
-    }
-    
+    let extraMins = parseInt(m.extra) || 0;
+    if (m.status === '1H' && m.m >= 45 && extraMins > 0) extraStr = ` +${extraMins}`;
+    else if (m.status === '2H' && m.m >= 90 && extraMins > 0) extraStr = ` +${extraMins}`;
+    else if (m.status === 'ET1' && m.m >= 105 && extraMins > 0) extraStr = ` +${extraMins}`;
+    else if (m.status === 'ET2' && m.m >= 120 && extraMins > 0) extraStr = ` +${extraMins}`;
     return `${displayMin}:${m.s < 10 ? '0'+m.s : m.s}${extraStr}`;
 }
 
@@ -293,10 +288,30 @@ function renderAll() {
         s2H = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[0] || '1st B';
         s2A = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[1] || '2nd A';
     }
+    
     document.getElementById('semis').innerHTML = `<h2>Semi-Finals</h2>
-        <div class="card"><div style="font-size:11px; text-align:center; color:#94a3b8; margin-bottom:10px;">${data.ko.s1.dt||''} ${data.ko.s1.tm||''}</div><div class="fixture-box"><span class="fixture-team" style="text-align:right">${s1H}</span><span class="fixture-score-box">${data.ko.s1.res || 'VS'}</span><span class="fixture-team" style="text-align:left">${s1A}</span></div></div>
-        <div class="card"><div style="font-size:11px; text-align:center; color:#94a3b8; margin-bottom:10px;">${data.ko.s2.dt||''} ${data.ko.s2.tm||''}</div><div class="fixture-box"><span class="fixture-team" style="text-align:right">${s2H}</span><span class="fixture-score-box">${data.ko.s2.res || 'VS'}</span><span class="fixture-team" style="text-align:left">${s2A}</span></div></div>`;
-    document.getElementById('final').innerHTML = `<h2>Grand Final</h2><div class="card" style="text-align:center; border:1px solid var(--gold);"><div class="fixture-box"><span class="fixture-team" style="text-align:right">${data.ko.s1.win || 'SF1 Winner'}</span><span class="fixture-score-box" style="border-color:var(--gold)">${data.ko.f.res || 'VS'}</span><span class="fixture-team" style="text-align:left">${data.ko.s2.win || 'SF2 Winner'}</span></div><h1 style="color:var(--gold)">${data.ko.f.win || '???'}</h1></div>`;
+        <div class="card">
+            <div style="font-size:11px; text-align:center; color:#94a3b8; margin-bottom:10px;">
+                ${data.ko.s1.dt||''} • ${data.ko.s1.tm||''} • <span style="color:var(--accent)">${data.ko.s1.pt || 'TBA'}</span>
+            </div>
+            <div class="fixture-box"><span class="fixture-team" style="text-align:right">${s1H}</span><span class="fixture-score-box">${data.ko.s1.res || 'VS'}</span><span class="fixture-team" style="text-align:left">${s1A}</span></div>
+        </div>
+        <div class="card">
+            <div style="font-size:11px; text-align:center; color:#94a3b8; margin-bottom:10px;">
+                ${data.ko.s2.dt||''} • ${data.ko.s2.tm||''} • <span style="color:var(--accent)">${data.ko.s2.pt || 'TBA'}</span>
+            </div>
+            <div class="fixture-box"><span class="fixture-team" style="text-align:right">${s2H}</span><span class="fixture-score-box">${data.ko.s2.res || 'VS'}</span><span class="fixture-team" style="text-align:left">${s2A}</span></div>
+        </div>`;
+    
+    document.getElementById('final').innerHTML = `<h2>Grand Final</h2>
+        <div class="card" style="text-align:center; border:1px solid var(--gold);">
+            <div style="font-size:11px; color:#94a3b8; margin-bottom:10px;">
+                ${data.ko.f.dt||''} • ${data.ko.f.tm||''} • <span style="color:var(--gold)">${data.ko.f.pt || 'TBA'}</span>
+            </div>
+            <div class="fixture-box"><span class="fixture-team" style="text-align:right">${data.ko.s1.win || 'SF1 Winner'}</span><span class="fixture-score-box" style="border-color:var(--gold)">${data.ko.f.res || 'VS'}</span><span class="fixture-team" style="text-align:left">${data.ko.s2.win || 'SF2 Winner'}</span></div>
+            <h1 style="color:var(--gold); margin-top:15px;">${data.ko.f.win || '???'}</h1>
+        </div>`;
+
     document.getElementById('leaderboard').innerHTML = `<div class="card"><h3>Golden Boot</h3>${data.scorers.sort((a,b)=>b.g-a.g).map(s=>`<div class="stat-row"><span>${s.n} (${s.t})</span><b style="color:var(--gold)">${s.g} G</b></div>`).join('')}</div><div class="card"><h3>Golden Glove</h3>${data.gks.sort((a,b)=>b.c-a.c).map(g=>`<div class="stat-row"><span>${g.n} (${g.t})</span><b style="color:var(--success)">${g.c} CS</b></div>`).join('')}</div>`;
     document.getElementById('updatesList').innerHTML = data.posts.map(p => `<div class="card"><small style="color:var(--accent)">${p.date}</small><h4>${p.title}</h4><p>${p.text}</p></div>`).join('');
 }
@@ -339,65 +354,152 @@ function renderAdmin() {
 
 function autoTime(id, val) {
     const m = liveEngine.matches[id];
-    m.status = val;
-    m.s = 0;
-    m.extra = 0;
-    
+    m.status = val; m.s = 0; m.extra = 0;
     if(val === '1H') { m.m = 0; m.running = true; }
     else if(val === 'HT') { m.m = 45; m.running = false; }
     else if(val === '2H') { m.m = 45; m.running = true; }
     else if(val === 'ET1') { m.m = 90; m.running = true; }
     else if(val === 'ET2') { m.m = 105; m.running = true; }
     else if(val === 'FT' || val === 'PEN') { m.m = 90; m.running = false; }
-    
     saveLive();
+    notify("Period Changed to " + val);
 }
 
 function liveInput(id, field, label) { return `<div class="admin-item-live"><label>${label}</label><input type="number" id="${field}-${id}" value="${liveEngine.matches[id][field] || 0}"></div>`; }
-function startLiveMatch() { const idx = document.getElementById('liveMatchSelect').value; const f = data.fixtures[idx]; const id = "M" + Date.now(); liveEngine.matches[id] = { hName:f.home, aName:f.away, active:false, running:false, m:0, s:0, hG:0, aG:0, hP:50, aP:50, hSo:0, aSo:0, hSf:0, aSf:0, hOff:0, aOff:0, hC:0, aC:0, hF:0, aF:0, hY:0, aY:0, hR:0, aR:0, status:'1H', extra:0, hGoals:'', aGoals:'' }; saveLive(); }
-function pushLiveUpdate(id) { ['hG','aG','hP','aP','hSo','aSo','hSf','aSf','hOff','aOff','hC','aC','hF','aF','hY','aY','hR','aR','m','s'].forEach(f => { liveEngine.matches[id][f] = parseInt(document.getElementById(`${f}-${id}`).value) || 0; }); liveEngine.matches[id].hGoals = document.getElementById(`hGoals-${id}`).value; liveEngine.matches[id].aGoals = document.getElementById(`aGoals-${id}`).value; liveEngine.matches[id].status = document.getElementById(`status-${id}`).value; liveEngine.matches[id].extra = parseInt(document.getElementById(`extra-${id}`).value) || 0; window.isAdminEditing = false; saveLive(); alert("Live Updated!"); }
-function toggleLiveActive(id) { liveEngine.matches[id].active = !liveEngine.matches[id].active; saveLive(); }
-function toggleLiveClock(id) { liveEngine.matches[id].running = !liveEngine.matches[id].running; saveLive(); }
-function deleteLiveMatch(id) { if(confirm("Delete?")) { delete liveEngine.matches[id]; saveLive(); } }
-function saveLive() { db.collection("kesale").doc("live_engine").set(liveEngine).then(renderAdmin); }
-function addPost() { data.posts.unshift({ title:upTitle.value, text:upText.value, date:new Date().toLocaleDateString('en-GB') }); save(); }
-function addGroup(){ let g=adG.value.toUpperCase(); if(g && !data.groups[g]){ data.groups[g]=[]; save(); }}
-function addTeam(){ let t=adT.value; if(t && !data.teams.includes(t)){ data.teams.push(t); save(); }}
-function assign(){ if(!data.groups[selG.value].includes(selT.value)){ data.groups[selG.value].push(selT.value); save(); }}
-function removeFromGroup(g, idx) { data.groups[g].splice(idx, 1); save(); }
 
-function genFixtures() {
-    if(!confirm("Reset?")) return;
-    let list = []; let grps = Object.keys(data.groups).sort();
-    let max = 0; let temp = {};
-    grps.forEach(g => {
-        let t = data.groups[g]; temp[g] = [];
-        if(t.length >= 4) {
-            temp[g].push({h:t[0], a:t[1]}); temp[g].push({h:t[2], a:t[3]});
-            temp[g].push({h:t[0], a:t[2]}); temp[g].push({h:t[1], a:t[3]});
-            temp[g].push({h:t[0], a:t[3]}); temp[g].push({h:t[1], a:t[2]});
-        }
-        if(temp[g].length > max) max = temp[g].length;
+function startLiveMatch() { 
+    const idx = document.getElementById('liveMatchSelect').value; 
+    const f = data.fixtures[idx]; 
+    const id = "M" + Date.now(); 
+    liveEngine.matches[id] = { hName:f.home, aName:f.away, active:false, running:false, m:0, s:0, hG:0, aG:0, hP:50, aP:50, hSo:0, aSo:0, hSf:0, aSf:0, hOff:0, aOff:0, hC:0, aC:0, hF:0, aF:0, hY:0, aY:0, hR:0, aR:0, status:'1H', extra:0, hGoals:'', aGoals:'' }; 
+    saveLive();
+    notify("Live Match Session Created!");
+}
+
+function pushLiveUpdate(id) {
+    const m = liveEngine.matches[id];
+    const fields = ['hG','aG','hP','aP','hSo','aSo','hSf','aSf','hOff','aOff','hC','aC', 'hF','aF','hY','aY','hR','aR','m','s','extra'];
+    fields.forEach(f => {
+        const input = document.getElementById(`${f}-${id}`);
+        if(input) m[f] = parseInt(input.value) || 0;
     });
-    for(let i=0; i<max; i++) grps.forEach(g => { if(temp[g][i]) list.push({home:temp[g][i].h, away:temp[g][i].a, group:g}); });
-    data.fixtures = list; data.results = {}; save();
+    m.hGoals = document.getElementById(`hGoals-${id}`).value;
+    m.aGoals = document.getElementById(`aGoals-${id}`).value;
+    m.status = document.getElementById(`status-${id}`).value;
+    window.isAdminEditing = false;
+    saveLive();
+    notify("Live Stats Updated!");
 }
 
-function updateF(i) { data.fixtures[i].date=document.getElementById(`dt${i}`).value; data.fixtures[i].time=document.getElementById(`tm${i}`).value; data.fixtures[i].pitch=document.getElementById(`pt${i}`).value; data.results[i]=document.getElementById(`rs${i}`).value; save(); }
-function updateKO(s1H, s1A, s2H, s2A) {
-    let w1='', w2='', wf='';
-    let r1=ks1rs.value.split('-'); if(r1.length===2) w1 = parseInt(r1[0])>parseInt(r1[1])?s1H:s1A;
-    let r2=ks2rs.value.split('-'); if(r2.length===2) w2 = parseInt(r2[0])>parseInt(r2[1])?s2H:s2A;
-    let rf=kfrs.value.split('-'); if(rf.length===2 && w1 && w2) wf = parseInt(rf[0])>parseInt(rf[1])?w1:w2;
-    data.ko.s1={dt:ks1dt.value, tm:ks1tm.value, pt:ks1pt.value, res:ks1rs.value, win:w1};
-    data.ko.s2={dt:ks2dt.value, tm:ks2tm.value, pt:ks2pt.value, res:ks2rs.value, win:w2};
-    data.ko.f={dt:kfdt.value, tm:kfpt.value, res:kfrs.value, win:wf};
-    save();
+function save() { db.collection("kesale").doc("live").set(data); }
+function saveLive() { db.collection("kesale").doc("live_engine").set(liveEngine); }
+function toggleLiveActive(id) { liveEngine.matches[id].active = !liveEngine.matches[id].active; saveLive(); notify("Visibility Toggled"); }
+function toggleLiveClock(id) { liveEngine.matches[id].running = !liveEngine.matches[id].running; saveLive(); notify("Timer Toggled"); }
+function deleteLiveMatch(id) { if(confirm("Remove this match control?")) { delete liveEngine.matches[id]; saveLive(); notify("Session Deleted"); renderAdmin(); } }
+function addGroup() { const g = document.getElementById('adG').value.toUpperCase(); if(g) { data.groups[g] = []; save(); notify("Group Added!"); renderAdmin(); } }
+function addTeam() { const t = document.getElementById('adT').value; if(t) { data.teams.push(t); save(); notify("Team Added!"); renderAdmin(); } }
+function assign() { 
+    const t = document.getElementById('selT').value; const g = document.getElementById('selG').value;
+    if(g && t && !data.groups[g].includes(t)) { data.groups[g].push(t); save(); notify("Team Assigned!"); renderAdmin(); }
 }
-function addScorer(){ let n=scN.value.trim(), t=scT.value, v=parseInt(scG.value); let ex=data.scorers.find(s=>s.n.toLowerCase()===n.toLowerCase() && s.t===t); if(ex) ex.g+=v; else data.scorers.push({n:n, t:t, g:v}); save(); }
-function addGK(){ let n=scN.value.trim(), t=scT.value, v=parseInt(scG.value); let ex=data.gks.find(g=>g.n.toLowerCase()===n.toLowerCase() && g.t===t); if(ex) ex.c+=v; else data.gks.push({n:n, t:t, c:v}); save(); }
-function save() { db.collection("kesale").doc("live").set(data).then(() => { renderAll(); if(document.getElementById('adminPanel').style.display==='block') renderAdmin(); }); }
-async function wipe() { if(confirm("Permanent delete?")) { await db.collection("kesale").doc("live").delete(); location.reload(); } }
+function removeFromGroup(g, idx) { data.groups[g].splice(idx, 1); save(); notify("Team Removed!"); renderAdmin(); }
+function updateF(i) {
+    data.fixtures[i].date = document.getElementById(`dt${i}`).value;
+    data.fixtures[i].time = document.getElementById(`tm${i}`).value;
+    data.fixtures[i].pitch = document.getElementById(`pt${i}`).value;
+    data.results[i] = document.getElementById(`rs${i}`).value;
+    save();
+    notify("Match " + (i+1) + " Saved!");
+}
+
+/* IMPROVED ALTERNATING FIXTURE GENERATOR - VERSION 2 (FINAL) */
+function genFixtures() {
+    let groupMatches = {};
+    let finalFixtures = [];
+    let groupNames = Object.keys(data.groups).sort();
+    
+    groupNames.forEach(g => {
+        let teams = [...data.groups[g]].sort(); // Ensures T1, T2, T3, T4 order
+        groupMatches[g] = [];
+        
+        if (teams.length >= 4) {
+            // Strictly follow your requested sequence:
+            // Match 1: T1 vs T2
+            groupMatches[g].push({ group: g, home: teams[0], away: teams[1] });
+            // Match 2: T3 vs T4
+            groupMatches[g].push({ group: g, home: teams[2], away: teams[3] });
+            // Match 3: T1 vs T3
+            groupMatches[g].push({ group: g, home: teams[0], away: teams[2] });
+            // Match 4: T2 vs T4
+            groupMatches[g].push({ group: g, home: teams[1], away: teams[3] });
+            
+            // Remaining pairings for a 4-team round robin: T1 vs T4 and T2 vs T3
+            groupMatches[g].push({ group: g, home: teams[0], away: teams[3] }); 
+            groupMatches[g].push({ group: g, home: teams[1], away: teams[2] }); 
+        } else {
+            // Fallback for smaller/larger groups
+            for(let i=0; i<teams.length; i++) {
+                for(let j=i+1; j<teams.length; j++) {
+                    groupMatches[g].push({ group: g, home: teams[i], away: teams[j] });
+                }
+            }
+        }
+    });
+
+    // INTERLEAVING LOGIC:
+    // Takes Round 1 from Group A, then Round 1 from Group B... 
+    let maxLen = Math.max(...Object.values(groupMatches).map(arr => arr.length));
+    for (let k = 0; k < maxLen; k++) {
+        groupNames.forEach(g => {
+            if (groupMatches[g][k]) {
+                finalFixtures.push(groupMatches[g][k]);
+            }
+        });
+    }
+
+    data.fixtures = finalFixtures;
+    save();
+    notify("Fixtures Updated: Sequence Secured & Groups Alternated!");
+    renderAdmin();
+}
+
+function updateKO(s1H, s1A, s2H, s2A) {
+    data.ko.s1 = { res: document.getElementById('ks1rs').value, dt: document.getElementById('ks1dt').value, tm: document.getElementById('ks1tm').value, pt: document.getElementById('ks1pt').value };
+    data.ko.s2 = { res: document.getElementById('ks2rs').value, dt: document.getElementById('ks2dt').value, tm: document.getElementById('ks2tm').value, pt: document.getElementById('ks2pt').value };
+    data.ko.f = { res: document.getElementById('kfrs').value, dt: document.getElementById('kfdt').value, tm: document.getElementById('kftm').value, pt: document.getElementById('kfpt').value };
+    if(data.ko.s1.res.includes('-')) data.ko.s1.win = (parseInt(data.ko.s1.res.split('-')[0]) > parseInt(data.ko.s1.res.split('-')[1])) ? s1H : s1A;
+    if(data.ko.s2.res.includes('-')) data.ko.s2.win = (parseInt(data.ko.s2.res.split('-')[0]) > parseInt(data.ko.s2.res.split('-')[1])) ? s2H : s2A;
+    if(data.ko.f.res.includes('-')) data.ko.f.win = (parseInt(data.ko.f.res.split('-')[0]) > parseInt(data.ko.f.res.split('-')[1])) ? data.ko.s1.win : data.ko.s2.win;
+    save();
+    notify("Knockout Data Saved!");
+}
+
+function addScorer() {
+    const n = document.getElementById('scN').value, t = document.getElementById('scT').value, g = parseInt(document.getElementById('scG').value);
+    if(!n || isNaN(g)) return;
+    let s = data.scorers.find(x => x.n === n); if(s) s.g += g; else data.scorers.push({n,t,g}); save();
+    notify("Goal Statistics Added!");
+}
+
+function addGK() {
+    const n = document.getElementById('scN').value, t = document.getElementById('scT').value;
+    if(!n) return;
+    let s = data.gks.find(x => x.n === n); if(s) s.c++; else data.gks.push({n,t,c:1}); save();
+    notify("Clean Sheet Added!");
+}
+
+function addPost() {
+    const title = document.getElementById('upTitle').value, text = document.getElementById('upText').value;
+    if(title) { 
+        data.posts.unshift({ title, text, date: new Date().toLocaleDateString() }); 
+        save(); 
+        notify("News Posted!");
+        document.getElementById('upTitle').value = ""; document.getElementById('upText').value = "";
+    }
+}
+
+function wipe() { if(confirm("WIPE ALL?")) { db.collection("kesale").doc("live").set({ teams: [], groups: {}, fixtures: [], results: {}, scorers: [], gks: [], ko: { s1: {}, s2: {}, f: {} }, posts: [] }); notify("System Wiped Clean"); }}
+
 load();
 </script>
 </body>
