@@ -41,9 +41,9 @@
 
     .card { background: var(--card-bg); padding: 20px; border-radius: 20px; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(12px); box-shadow: 0 15px 35px rgba(0,0,0,0.2); }
     h2 { font-size: 1.6rem; font-weight: 700; color: #f8fafc; margin-bottom: 30px; text-align: center; text-transform: uppercase; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { color: #94a3b8; padding: 15px 10px; border-bottom: 1px solid #334155; font-weight: 600; text-transform: uppercase; }
-    td { padding: 15px 10px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.03); color: #cbd5e1; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th { color: #94a3b8; padding: 15px 5px; border-bottom: 1px solid #334155; font-weight: 600; text-transform: uppercase; }
+    td { padding: 15px 5px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.03); color: #cbd5e1; }
 
     .live-dot { color: var(--danger); animation: blink 1s infinite; font-weight: 800; }
     @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
@@ -77,29 +77,6 @@
     .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--modal-bg); padding: 40px; border-radius: 24px; z-index: 1000; width: 90%; max-width: 420px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 25px 70px rgba(0,0,0,0.7); backdrop-filter: blur(10px); }
     .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.88); z-index: 999; backdrop-filter: blur(6px); }
     .footer { text-align: center; padding: 40px 20px; color: #64748b; font-size: 13px; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 50px; }
-
-    /* --- MOBILE RESPONSIVE OVERRIDES --- */
-    @media (max-width: 768px) {
-        .hero { padding: 40px 15px; }
-        .hero h1 { font-size: 2.2rem; }
-        .hero p { font-size: 0.9rem; line-height: 1.6; margin: 15px auto; }
-
-        nav { justify-content: flex-start; padding: 10px; gap: 8px; }
-        nav button { padding: 8px 16px; font-size: 11px; }
-
-        .card { padding: 15px; border-radius: 16px; overflow-x: auto; }
-        table { font-size: 11px; min-width: 450px; }
-        th, td { padding: 12px 6px; }
-
-        .score-box-live { font-size: 1.6rem; min-width: 65px; padding: 5px 10px; }
-        .team-name { font-size: 13px; font-weight: 600; }
-        
-        .fixture-team { font-size: 0.9rem; }
-        .fixture-score-box { margin: 0 10px; padding: 6px 12px; min-width: 45px; }
-
-        .admin-grid-live { grid-template-columns: 1fr 1fr; gap: 8px; }
-        .modal { width: 88%; padding: 25px; }
-    }
 </style>
 </head>
 <body>
@@ -164,9 +141,7 @@ function login() {
     const email = document.getElementById('user').value.trim();
     const password = document.getElementById('pass').value;
     const btn = document.getElementById('loginBtn');
-    
     if(!email || !password) return alert("Enter credentials");
-    
     btn.innerText = "Authenticating...";
     auth.signInWithEmailAndPassword(email, password)
     .then(() => {
@@ -188,13 +163,17 @@ async function load() {
         if(doc.exists) {
             liveEngine = doc.data();
             renderLive();
-            if(document.getElementById('adminPanel').style.display === 'block' && !window.isAdminEditing) renderAdmin();
+            // Sync Admin Tab if Open
+            if(document.getElementById('adminPanel').style.display === 'block') {
+                 if(!window.isAdminEditing) renderAdmin();
+                 else updateAdminClocks(); 
+            }
         }
     });
-    
     auth.signOut();
 }
 
+// MASTER TIMER LOGIC (Runs for both Public and Admin)
 setInterval(() => {
     let needsSync = false;
     Object.keys(liveEngine.matches).forEach(id => {
@@ -204,28 +183,61 @@ setInterval(() => {
             if(m.status === '2H') limit = 90;
             if(m.status === 'ET1') limit = 105;
             if(m.status === 'ET2') limit = 120;
+            
             if(['HT','FT','PEN'].includes(m.status)) return;
-            if (m.m >= (limit + (parseInt(m.extra) || 0))) return;
+
             m.s++; if(m.s >= 60) { m.m++; m.s = 0; }
+            
+            if (m.m >= (limit + (parseInt(m.extra) || 0)) && (m.s >= 0)) {
+                m.running = false;
+            }
             needsSync = true;
         }
     });
-    if(needsSync) {
-        renderLive();
-        Object.keys(liveEngine.matches).forEach(id => {
-            const el = document.getElementById(`live-timer-${id}`);
-            if(el) el.innerText = formatLiveClock(liveEngine.matches[id]);
-        });
+    if(needsSync) { 
+        renderLive(); 
+        updateAdminClocks(); // Update clock display in Admin tab every second
     }
 }, 1000);
 
+// NEW: Updates clock display in Admin panel without re-rendering everything
+function updateAdminClocks() {
+    Object.keys(liveEngine.matches).forEach(id => {
+        const m = liveEngine.matches[id];
+        const clockEl = document.getElementById(`clockDisplay-${id}`);
+        const mInput = document.getElementById(`m-${id}`);
+        const sInput = document.getElementById(`s-${id}`);
+        
+        if(clockEl) clockEl.innerText = formatLiveClock(m);
+        // Sync inputs if not currently being typed in
+        if(mInput && document.activeElement !== mInput) mInput.value = m.m;
+        if(sInput && document.activeElement !== sInput) sInput.value = m.s;
+    });
+}
+
 function formatLiveClock(m) {
-    if (m.status === 'HT') return 'HALFTIME';
-    if (m.status === 'FT') return 'FULLTIME';
-    if (m.status === 'PEN') return 'PENALTIES';
-    if (m.status === '1H' && m.m >= 45) return `45:00 +${m.extra || 0}`;
-    if (m.status === '2H' && m.m >= 90) return `90:00 +${m.extra || 0}`;
-    return `${m.m}:${m.s < 10 ? '0'+m.s : m.s}`;
+    if (m.status === 'HT') return 'HT';
+    if (m.status === 'FT') return 'FT';
+    if (m.status === 'PEN') return 'PEN';
+    
+    let displayMin = m.m;
+    let extraStr = "";
+    
+    if (m.status === '1H' && m.m >= 45) {
+        displayMin = 45;
+        extraStr = ` +${m.m - 45}'`; 
+    } else if (m.status === '2H' && m.m >= 90) {
+        displayMin = 90;
+        extraStr = ` +${m.m - 90}'`;
+    } else if (m.status === 'ET1' && m.m >= 105) {
+        displayMin = 105;
+        extraStr = ` +${m.m - 105}'`;
+    } else if (m.status === 'ET2' && m.m >= 120) {
+        displayMin = 120;
+        extraStr = ` +${m.m - 120}'`;
+    }
+    
+    return `${displayMin}:${m.s < 10 ? '0'+m.s : m.s}${extraStr}`;
 }
 
 function showSec(id, btn) {
@@ -234,12 +246,10 @@ function showSec(id, btn) {
     document.getElementById(id).classList.add('active');
     if(btn) btn.classList.add('active-btn');
     window.isAdminEditing = false;
-    
     if(id !== 'admin') {
         document.getElementById('loginBox').style.display = "block";
         document.getElementById('adminPanel').style.display = "none";
     }
-    
     window.scrollTo({top: 0, behavior: 'smooth'});
 }
 
@@ -266,8 +276,8 @@ function renderAll() {
     let gHtml = "";
     Object.keys(data.groups).sort().forEach(g => {
         let sorted = [...data.groups[g]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd || getStats(b).gf-getStats(a).gf);
-        gHtml += `<div class="card"><h3>Group ${g}</h3><table><tr><th>Pos</th><th style="text-align:left">Team</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr>`;
-        sorted.forEach((t, i) => { let s = getStats(t); gHtml += `<tr><td>${i+1}</td><td style="text-align:left; font-weight:bold; color:white">${t}</td><td>${s.mp}</td><td>${s.w}</td><td>${s.d}</td><td>${s.l}</td><td>${s.gd}</td><td><b style="color:var(--gold)">${s.pts}</b></td></tr>`; });
+        gHtml += `<div class="card"><h3>Group ${g}</h3><table><tr><th>Pos</th><th style="text-align:left">Team</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th></tr>`;
+        sorted.forEach((t, i) => { let s = getStats(t); gHtml += `<tr><td>${i+1}</td><td style="text-align:left; font-weight:bold; color:white">${t}</td><td>${s.mp}</td><td>${s.w}</td><td>${s.d}</td><td>${s.l}</td><td>${s.gf}</td><td>${s.ga}</td><td>${s.gd}</td><td><b style="color:var(--gold)">${s.pts}</b></td></tr>`; });
         gHtml += `</table></div>`;
     });
     document.getElementById('groups').innerHTML = gHtml;
@@ -299,7 +309,7 @@ function renderLive() {
         html += `<div class="card"><div style="display:flex; justify-content:space-between;"><span class="live-dot">● ${m.status}</span><span style="font-weight:800; color:var(--danger)">${formatLiveClock(m)}</span></div>
             <div class="score-row-live"><div class="team-name" style="text-align:right; flex:1">${m.hName}</div><div class="score-box-live">${m.hG} - ${m.aG}</div><div class="team-name" style="text-align:left; flex:1">${m.aName}</div></div>
             <div class="goal-log-live"><div style="text-align:right; width:45%">${m.hGoals.replace(/\n/g,'<br>')}</div><div style="text-align:left; width:45%">${m.aGoals.replace(/\n/g,'<br>')}</div></div>
-            <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">${statBarLive("Possession", m.hP, m.aP, true)}${statBarLive("Shots On", m.hSo, m.aSo)}${statBarLive("Shots Off", m.hSf, m.aSf)}${statBarLive("Corners", m.hC, m.aC)}${statBarLive("Fouls", m.hF, m.aF)}<div style="display:flex; justify-content:space-between; margin-top:10px; font-size:12px;"><span>🟨 ${m.hY} 🟥 ${m.hR}</span><b>CARDS</b><span>🟨 ${m.aY} 🟥 ${m.aR}</span></div></div></div>`;
+            <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:10px;">${statBarLive("Possession", m.hP, m.aP, true)}${statBarLive("Shots on Target", m.hSo, m.aSo)}${statBarLive("Shots off Target", m.hSf, m.aSf)}${statBarLive("Offsides", m.hOff, m.aOff)}${statBarLive("Corners", m.hC, m.aC)}${statBarLive("Fouls", m.hF, m.aF)}<div style="display:flex; justify-content:space-between; margin-top:10px; font-size:12px;"><span>🟨 ${m.hY} 🟥 ${m.hR}</span><b>CARDS</b><span>🟨 ${m.aY} 🟥 ${m.aR}</span></div></div></div>`;
     });
     cont.innerHTML = html || "<center style='color:#64748b; padding:20px;'>No matches currently live.</center>";
 }
@@ -323,13 +333,29 @@ function renderAdmin() {
         s2H = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[0] || '1st B';
         s2A = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[1] || '2nd A';
     }
-    let html = `<div class="card" style="border:1.5px solid var(--danger)"><h3 style="color:var(--danger)">1. LIVE MATCH ENGINE</h3><select id="liveMatchSelect" class="admin-input">${data.fixtures.map((f,i)=>`<option value="${i}">${f.home} vs ${f.away}</option>`).join('')}</select><button onclick="startLiveMatch()" class="btn-save" style="background:var(--danger)">Create Live Session</button><div id="liveAdminList">${Object.keys(liveEngine.matches).map(id => { const m = liveEngine.matches[id]; return `<div class="card" oninput="window.isAdminEditing=true" style="border-left:4px solid var(--accent); margin-top:15px"><div style="display:flex; justify-content:space-between"><b>${m.hName} vs ${m.aName}</b><button onclick="toggleLiveActive('${id}')" style="background:${m.active?'var(--danger)':'var(--success)'}; color:white; border:none; padding:4px 8px; border-radius:4px;">${m.active?'OFF':'GO LIVE'}</button></div><div style="text-align:center; margin:10px 0;"><button onclick="toggleLiveClock('${id}')" class="btn-save" style="padding:6px; margin:0; background:var(--accent); width:auto;">${m.running?'Stop Clock':'Start Clock'}</button><h2 id="live-timer-${id}">${formatLiveClock(m)}</h2></div><div class="admin-grid-live">${liveInput(id, 'hG', 'Home Score')}${liveInput(id, 'aG', 'Away Score')}<div class="admin-item-live"><label>Home Scorers</label><textarea id="hGoals-${id}">${m.hGoals}</textarea></div><div class="admin-item-live"><label>Away Scorers</label><textarea id="aGoals-${id}">${m.aGoals}</textarea></div>${liveInput(id, 'hP', 'H Poss%')}${liveInput(id, 'aP', 'A Poss%')}${liveInput(id, 'hSo', 'H S.On')}${liveInput(id, 'aSo', 'A S.On')}${liveInput(id, 'hSf', 'H S.Off')}${liveInput(id, 'aSf', 'A S.Off')}${liveInput(id, 'hC', 'H Corn')}${liveInput(id, 'aC', 'A Corn')}${liveInput(id, 'hF', 'H Foul')}${liveInput(id, 'aF', 'A Foul')}${liveInput(id, 'hY', 'H Yel')}${liveInput(id, 'aY', 'A Yel')}${liveInput(id, 'hR', 'H Red')}${liveInput(id, 'aR', 'A Red')}<div class="admin-item-live"><label>Extra Time (+)</label><input type="number" id="extra-${id}" value="${m.extra}"></div><div class="admin-item-live"><label>Period</label><select id="status-${id}" style="width:100%; background:var(--modal-bg); color:white; border:none;"><option value="1H" ${m.status==='1H'?'selected':''}>1st Half</option><option value="HT" ${m.status==='HT'?'selected':''}>Half Time</option><option value="2H" ${m.status==='2H'?'selected':''}>2nd Half</option><option value="PEN" ${m.status==='PEN'?'selected':''}>Penalties</option><option value="FT" ${m.status==='FT'?'selected':''}>Full Time</option></select></div></div><button onclick="pushLiveUpdate('${id}')" class="btn-save">PUSH UPDATE</button><button onclick="deleteLiveMatch('${id}')" style="background:transparent; color:var(--danger); border:none; width:100%; margin-top:10px;">Remove Control</button></div>`; }).join('')}</div></div><div class="card"><h3>2. NEWS POST</h3><input id="upTitle" placeholder="Title" class="admin-input"><textarea id="upText" placeholder="Content" class="admin-input"></textarea><button onclick="addPost()" class="btn-save">Post News</button></div><div class="card"><h3>3. GROUPS & TEAMS</h3><input id="adG" placeholder="Group Letter" class="admin-input"><button onclick="addGroup()" style="margin-bottom:10px">+ Add Group</button><input id="adT" placeholder="Team Name" class="admin-input"><button onclick="addTeam()">+ Add Team</button><div style="margin:15px 0">${Object.keys(data.groups).map(g => `<b>Group ${g}:</b> ${data.groups[g].map((t,i)=>`<span>${t}<button class="tag-remove" onclick="removeFromGroup('${g}',${i})">x</button></span>`).join(', ')}<br>`).join('')}</div><select id="selT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><select id="selG" class="admin-input">${Object.keys(data.groups).map(g=>`<option>${g}</option>`).join('')}</select><button onclick="assign()" class="btn-save">Confirm Assignment</button></div><div class="card"><h3>4. MATCH RESULTS (Group Stage)</h3><div style="max-height:400px; overflow-y:auto">${data.fixtures.map((f,i)=> `<div style="border-bottom:1px solid #334155; padding:10px 0"><b>${f.home} vs ${f.away}</b><br><div style="display:flex; gap:5px"><input id="dt${i}" value="${f.date||''}" placeholder="Date" class="admin-input"><input id="tm${i}" value="${f.time||''}" placeholder="Time" class="admin-input"><input id="pt${i}" value="${f.pitch||''}" placeholder="Pitch" class="admin-input"></div><input id="rs${i}" value="${data.results[i]||''}" placeholder="Score (1-0)" class="admin-input"><button onclick="updateF(${i})" style="width:100%; padding:8px;">Save Match ${i+1}</button></div>`).join('')}</div><button onclick="genFixtures()" class="btn-save" style="background:var(--accent)">Regenerate Alternating Fixtures</button></div><div class="card"><h3>5. KNOCKOUTS</h3><b>SF1: ${s1H} vs ${s1A}</b><div style="display:flex; gap:5px"><input id="ks1dt" class="admin-input" placeholder="Date" value="${data.ko.s1.dt||''}"><input id="ks1tm" class="admin-input" placeholder="Time" value="${data.ko.s1.tm||''}"><input id="ks1pt" class="admin-input" placeholder="Pitch" value="${data.ko.s1.pt||''}"></div><input id="ks1rs" class="admin-input" placeholder="Score" value="${data.ko.s1.res||''}"><b>SF2: ${s2H} vs ${s2A}</b><div style="display:flex; gap:5px"><input id="ks2dt" class="admin-input" placeholder="Date" value="${data.ko.s2.dt||''}"><input id="ks2tm" class="admin-input" placeholder="Time" value="${data.ko.s2.tm||''}"><input id="ks2pt" class="admin-input" placeholder="Pitch" value="${data.ko.s2.pt||''}"></div><input id="ks2rs" class="admin-input" placeholder="Score" value="${data.ko.s2.res||''}"><b>FINAL</b><div style="display:flex; gap:5px"><input id="kfdt" class="admin-input" placeholder="Date" value="${data.ko.f.dt||''}"><input id="kftm" class="admin-input" placeholder="Time" value="${data.ko.f.tm||''}"><input id="kfpt" class="admin-input" placeholder="Pitch" value="${data.ko.f.pt||''}"></div><input id="kfrs" class="admin-input" placeholder="Score" value="${data.ko.f.res||''}"> <button onclick="updateKO('${s1H}','${s1A}','${s2H}','${s2A}')" class="btn-save">Save Knockouts</button></div><div class="card"><h3>6. PLAYER STATS</h3><input id="scN" placeholder="Player Name" class="admin-input"><select id="scT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><input id="scG" placeholder="Quantity" class="admin-input" type="number"><button onclick="addScorer()">Add Goals</button><button onclick="addGK()" style="background:#475569">Add Clean Sheet</button></div><button onclick="wipe()" class="btn-save" style="background:var(--danger)">WIPE ALL DATA</button><button onclick="auth.signOut().then(()=>location.reload())" class="btn-save" style="background:#475569">Logout</button>`;
+    let html = `<div class="card" style="border:1.5px solid var(--danger)"><h3 style="color:var(--danger)">1. LIVE MATCH ENGINE</h3><select id="liveMatchSelect" class="admin-input">${data.fixtures.map((f,i)=>`<option value="${i}">${f.home} vs ${f.away}</option>`).join('')}</select><button onclick="startLiveMatch()" class="btn-save" style="background:var(--danger)">Create Live Session</button><div id="liveAdminList">${Object.keys(liveEngine.matches).map(id => { const m = liveEngine.matches[id]; return `<div class="card" oninput="window.isAdminEditing=true" style="border-left:4px solid var(--accent); margin-top:15px"><div style="display:flex; justify-content:space-between"><b>${m.hName} vs ${m.aName}</b><button onclick="toggleLiveActive('${id}')" style="background:${m.active?'var(--danger)':'var(--success)'}; color:white; border:none; padding:4px 8px; border-radius:4px;">${m.active?'OFF':'GO LIVE'}</button></div><div style="text-align:center; margin:10px 0;"><button onclick="toggleLiveClock('${id}')" class="btn-save" style="padding:6px; margin:0; background:var(--accent); width:auto;">${m.running?'Stop Clock':'Start Clock'}</button><h2 id="clockDisplay-${id}">${formatLiveClock(m)}</h2></div><div class="admin-grid-live">${liveInput(id, 'hG', 'Home Score')}${liveInput(id, 'aG', 'Away Score')}<div class="admin-item-live"><label>Home Scorers</label><textarea id="hGoals-${id}">${m.hGoals}</textarea></div><div class="admin-item-live"><label>Away Scorers</label><textarea id="aGoals-${id}">${m.aGoals}</textarea></div>${liveInput(id, 'm', 'Current Min')}${liveInput(id, 's', 'Current Sec')}${liveInput(id, 'hP', 'H Poss%')}${liveInput(id, 'aP', 'A Poss%')}${liveInput(id, 'hSo', 'H S.On Target')}${liveInput(id, 'aSo', 'A S.On Target')}${liveInput(id, 'hSf', 'H S.Off Target')}${liveInput(id, 'aSf', 'A S.Off Target')}${liveInput(id, 'hOff', 'H Offsides')}${liveInput(id, 'aOff', 'A Offsides')}${liveInput(id, 'hC', 'H Corn')}${liveInput(id, 'aC', 'A Corn')}${liveInput(id, 'hF', 'H Foul')}${liveInput(id, 'aF', 'A Foul')}${liveInput(id, 'hY', 'H Yel')}${liveInput(id, 'aY', 'A Yel')}${liveInput(id, 'hR', 'H Red')}${liveInput(id, 'aR', 'A Red')}<div class="admin-item-live"><label>Extra Time (+)</label><input type="number" id="extra-${id}" value="${m.extra}"></div><div class="admin-item-live"><label>Period</label><select id="status-${id}" onchange="autoTime('${id}', this.value)" style="width:100%; background:var(--modal-bg); color:white; border:none;"><option value="1H" ${m.status==='1H'?'selected':''}>1st Half</option><option value="HT" ${m.status==='HT'?'selected':''}>Half Time</option><option value="2H" ${m.status==='2H'?'selected':''}>2nd Half</option><option value="ET1" ${m.status==='ET1'?'selected':''}>Ex.Time 1</option><option value="ET2" ${m.status==='ET2'?'selected':''}>Ex.Time 2</option><option value="PEN" ${m.status==='PEN'?'selected':''}>Penalties</option><option value="FT" ${m.status==='FT'?'selected':''}>Full Time</option></select></div></div><button onclick="pushLiveUpdate('${id}')" class="btn-save">PUSH UPDATE</button><button onclick="deleteLiveMatch('${id}')" style="background:transparent; color:var(--danger); border:none; width:100%; margin-top:10px;">Remove Control</button></div>`; }).join('')}</div></div><div class="card"><h3>2. NEWS POST</h3><input id="upTitle" placeholder="Title" class="admin-input"><textarea id="upText" placeholder="Content" class="admin-input"></textarea><button onclick="addPost()" class="btn-save">Post News</button></div><div class="card"><h3>3. GROUPS & TEAMS</h3><input id="adG" placeholder="Group Letter" class="admin-input"><button onclick="addGroup()" style="margin-bottom:10px">+ Add Group</button><input id="adT" placeholder="Team Name" class="admin-input"><button onclick="addTeam()">+ Add Team</button><div style="margin:15px 0">${Object.keys(data.groups).map(g => `<b>Group ${g}:</b> ${data.groups[g].map((t,i)=>`<span>${t}<button class="tag-remove" onclick="removeFromGroup('${g}',${i})">x</button></span>`).join(', ')}<br>`).join('')}</div><select id="selT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><select id="selG" class="admin-input">${Object.keys(data.groups).map(g=>`<option>${g}</option>`).join('')}</select><button onclick="assign()" class="btn-save">Confirm Assignment</button></div><div class="card"><h3>4. MATCH RESULTS (Group Stage)</h3><div style="max-height:400px; overflow-y:auto">${data.fixtures.map((f,i)=> `<div style="border-bottom:1px solid #334155; padding:10px 0"><b>${f.home} vs ${f.away}</b><br><div style="display:flex; gap:5px"><input id="dt${i}" value="${f.date||''}" placeholder="Date" class="admin-input"><input id="tm${i}" value="${f.time||''}" placeholder="Time" class="admin-input"><input id="pt${i}" value="${f.pitch||''}" placeholder="Pitch" class="admin-input"></div><input id="rs${i}" value="${data.results[i]||''}" placeholder="Score (1-0)" class="admin-input"><button onclick="updateF(${i})" style="width:100%; padding:8px;">Save Match ${i+1}</button></div>`).join('')}</div><button onclick="genFixtures()" class="btn-save" style="background:var(--accent)">Regenerate Alternating Fixtures</button></div><div class="card"><h3>5. KNOCKOUTS</h3><b>SF1: ${s1H} vs ${s1A}</b><div style="display:flex; gap:5px"><input id="ks1dt" class="admin-input" placeholder="Date" value="${data.ko.s1.dt||''}"><input id="ks1tm" class="admin-input" placeholder="Time" value="${data.ko.s1.tm||''}"><input id="ks1pt" class="admin-input" placeholder="Pitch" value="${data.ko.s1.pt||''}"></div><input id="ks1rs" class="admin-input" placeholder="Score" value="${data.ko.s1.res||''}"><b>SF2: ${s2H} vs ${s2A}</b><div style="display:flex; gap:5px"><input id="ks2dt" class="admin-input" placeholder="Date" value="${data.ko.s2.dt||''}"><input id="ks2tm" class="admin-input" placeholder="Time" value="${data.ko.s2.tm||''}"><input id="ks2pt" class="admin-input" placeholder="Pitch" value="${data.ko.s2.pt||''}"></div><input id="ks2rs" class="admin-input" placeholder="Score" value="${data.ko.s2.res||''}"><b>FINAL</b><div style="display:flex; gap:5px"><input id="kfdt" class="admin-input" placeholder="Date" value="${data.ko.f.dt||''}"><input id="kftm" class="admin-input" placeholder="Time" value="${data.ko.f.tm||''}"><input id="kfpt" class="admin-input" placeholder="Pitch" value="${data.ko.f.pt||''}"></div><input id="kfrs" class="admin-input" placeholder="Score" value="${data.ko.f.res||''}"> <button onclick="updateKO('${s1H}','${s1A}','${s2H}','${s2A}')" class="btn-save">Save Knockouts</button></div><div class="card"><h3>6. PLAYER STATS</h3><input id="scN" placeholder="Player Name" class="admin-input"><select id="scT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><input id="scG" placeholder="Quantity" class="admin-input" type="number"><button onclick="addScorer()">Add Goals</button><button onclick="addGK()" style="background:#475569">Add Clean Sheet</button></div><button onclick="wipe()" class="btn-save" style="background:var(--danger)">WIPE ALL DATA</button><button onclick="auth.signOut().then(()=>location.reload())" class="btn-save" style="background:#475569">Logout</button>`;
     document.getElementById('adminPanel').innerHTML = html;
 }
 
+function autoTime(id, val) {
+    const m = liveEngine.matches[id];
+    m.status = val;
+    m.s = 0;
+    m.extra = 0;
+    
+    if(val === '1H') { m.m = 0; m.running = true; }
+    else if(val === 'HT') { m.m = 45; m.running = false; }
+    else if(val === '2H') { m.m = 45; m.running = true; }
+    else if(val === 'ET1') { m.m = 90; m.running = true; }
+    else if(val === 'ET2') { m.m = 105; m.running = true; }
+    else if(val === 'FT' || val === 'PEN') { m.m = 90; m.running = false; }
+    
+    saveLive();
+}
+
 function liveInput(id, field, label) { return `<div class="admin-item-live"><label>${label}</label><input type="number" id="${field}-${id}" value="${liveEngine.matches[id][field] || 0}"></div>`; }
-function startLiveMatch() { const idx = document.getElementById('liveMatchSelect').value; const f = data.fixtures[idx]; const id = "M" + Date.now(); liveEngine.matches[id] = { hName:f.home, aName:f.away, active:false, running:false, m:0, s:0, hG:0, aG:0, hP:50, aP:50, hSo:0, aSo:0, hSf:0, aSf:0, hC:0, aC:0, hF:0, aF:0, hY:0, aY:0, hR:0, aR:0, status:'1H', extra:0, hGoals:'', aGoals:'' }; saveLive(); }
-function pushLiveUpdate(id) { ['hG','aG','hP','aP','hSo','aSo','hSf','aSf','hC','aC','hF','aF','hY','aY','hR','aR'].forEach(f => { liveEngine.matches[id][f] = parseInt(document.getElementById(`${f}-${id}`).value) || 0; }); liveEngine.matches[id].hGoals = document.getElementById(`hGoals-${id}`).value; liveEngine.matches[id].aGoals = document.getElementById(`aGoals-${id}`).value; liveEngine.matches[id].status = document.getElementById(`status-${id}`).value; liveEngine.matches[id].extra = parseInt(document.getElementById(`extra-${id}`).value) || 0; window.isAdminEditing = false; saveLive(); alert("Live Updated!"); }
+function startLiveMatch() { const idx = document.getElementById('liveMatchSelect').value; const f = data.fixtures[idx]; const id = "M" + Date.now(); liveEngine.matches[id] = { hName:f.home, aName:f.away, active:false, running:false, m:0, s:0, hG:0, aG:0, hP:50, aP:50, hSo:0, aSo:0, hSf:0, aSf:0, hOff:0, aOff:0, hC:0, aC:0, hF:0, aF:0, hY:0, aY:0, hR:0, aR:0, status:'1H', extra:0, hGoals:'', aGoals:'' }; saveLive(); }
+function pushLiveUpdate(id) { ['hG','aG','hP','aP','hSo','aSo','hSf','aSf','hOff','aOff','hC','aC','hF','aF','hY','aY','hR','aR','m','s'].forEach(f => { liveEngine.matches[id][f] = parseInt(document.getElementById(`${f}-${id}`).value) || 0; }); liveEngine.matches[id].hGoals = document.getElementById(`hGoals-${id}`).value; liveEngine.matches[id].aGoals = document.getElementById(`aGoals-${id}`).value; liveEngine.matches[id].status = document.getElementById(`status-${id}`).value; liveEngine.matches[id].extra = parseInt(document.getElementById(`extra-${id}`).value) || 0; window.isAdminEditing = false; saveLive(); alert("Live Updated!"); }
 function toggleLiveActive(id) { liveEngine.matches[id].active = !liveEngine.matches[id].active; saveLive(); }
 function toggleLiveClock(id) { liveEngine.matches[id].running = !liveEngine.matches[id].running; saveLive(); }
 function deleteLiveMatch(id) { if(confirm("Delete?")) { delete liveEngine.matches[id]; saveLive(); } }
