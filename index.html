@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>KESALE CUP 2026 - Masterpiece v41.3</title>
+<title>KESALE CUP 2026 - Official platform for Kesale Cup where league fixtures, results, live games and all essential league information are found - All in one place.</title>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -94,6 +94,7 @@
 
 <div class="hero">
     <h1 onclick="showSec('admin', document.getElementById('btnUpdates'))">KESALE CUP 2026</h1>
+    <div style="color: white; font-weight: 600; letter-spacing: 2px; margin-top: -5px; opacity: 1;">MZUMBE UNIVERSITY</div>
     <p>Prestigious tournament by Dr. Anosisye Kesale fostering talent and unity. The winning team is awarded a cow.</p>
 </div>
 
@@ -234,7 +235,6 @@ function formatLiveClock(m) {
     let displayMin = m.m;
     let extraStr = "";
     let extraMins = parseInt(m.extra) || 0;
-    // Added "+" sign visibility in front of added minutes
     if (m.status === '1H' && m.m >= 45 && extraMins > 0) extraStr = ` +${extraMins}`;
     else if (m.status === '2H' && m.m >= 90 && extraMins > 0) extraStr = ` +${extraMins}`;
     else if (m.status === 'ET1' && m.m >= 105 && extraMins > 0) extraStr = ` +${extraMins}`;
@@ -405,7 +405,7 @@ function renderAdmin() {
         s2H = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[0] || '1st B';
         s2A = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[1] || '2nd A';
     }
-    let html = `<div class="card" style="border:1.5px solid var(--danger)"><h3 style="color:var(--danger)">1. LIVE MATCH ENGINE</h3><select id="liveMatchSelect" class="admin-input"><optgroup label="Groups">${data.fixtures.map((f,i)=>`<option value="${i}">${f.home} vs ${f.away}</option>`).join('')}</optgroup><optgroup label="Knockouts"><option value="ko-s1">Semi Final 1</option><option value="ko-s2">Semi Final 2</option><option value="ko-f">Grand Final</option></optgroup></select><button onclick="startLiveMatch()" class="btn-save" style="background:var(--danger)">Create Live Session</button><div id="liveAdminList">${Object.keys(liveEngine.matches).map(id => { const m = liveEngine.matches[id]; return `<div class="card" oninput="window.isAdminEditing=true" style="border-left:4px solid var(--accent); margin-top:15px"><div style="display:flex; justify-content:space-between"><b>${m.hName} vs ${m.aName}</b><button onclick="toggleLiveActive('${id}')" style="background:${m.active?'var(--danger)':'var(--success)'}; color:white; border:none; padding:4px 8px; border-radius:4px;">${m.active?'OFF':'GO LIVE'}</button></div><div style="text-align:center; margin:10px 0;"><button onclick="toggleLiveClock('${id}')" class="btn-save" style="padding:6px; margin:0; background:var(--accent); width:auto;">${m.running?'Stop Clock':'Start Clock'}</button><h2 id="clockDisplay-${id}">${formatLiveClock(m)}</h2></div><div class="admin-grid-live">${liveInput(id, 'hG', 'Home Score')}${liveInput(id, 'aG', 'Away Score')}<div class="admin-item-live"><label>Home Scorers</label><textarea id="hGoals-${id}">${m.hGoals}</textarea></div><div class="admin-item-live"><label>Away Scorers</label><textarea id="aGoals-${id}">${m.aGoals}</textarea></div>${liveInput(id, 'm', 'Current Min')}${liveInput(id, 's', 'Current Sec')}${liveInput(id, 'hP', 'H Poss%')}${liveInput(id, 'aP', 'A Poss%')}${liveInput(id, 'hSo', 'H S.On Target')}${liveInput(id, 'aSo', 'A S.On Target')}${liveInput(id, 'hSf', 'H S.Off Target')}${liveInput(id, 'aSf', 'A S.Off Target')}${liveInput(id, 'hOff', 'H Offsides')}${liveInput(id, 'aOff', 'A Offsides')}${liveInput(id, 'hC', 'H Corn')}${liveInput(id, 'aC', 'A Corn')}${liveInput(id, 'hF', 'H Foul')}${liveInput(id, 'aF', 'A Foul')}${liveInput(id, 'hY', 'H Yel')}${liveInput(id, 'aY', 'A Yel')}${liveInput(id, 'hR', 'H Red')}${liveInput(id, 'aR', 'A Red')}<div class="admin-item-live"><label>Extra Time (+)</label><input type="number" id="extra-${id}" value="${m.extra}"></div><div class="admin-item-live"><label>Period</label><select id="status-${id}" onchange="autoTime('${id}', this.value)" style="width:100%; background:var(--modal-bg); color:white; border:none;"><option value="1H" ${m.status==='1H'?'selected':''}>1st Half</option><option value="HT" ${m.status==='HT'?'selected':''}>Half Time</option><option value="2H" ${m.status==='2H'?'selected':''}>2nd Half</option><option value="ET1" ${m.status==='ET1'?'selected':''}>Ex.Time 1</option><option value="ET2" ${m.status==='ET2'?'selected':''}>Ex.Time 2</option><option value="PEN" ${m.status==='PEN'?'selected':''}>Penalties</option><option value="FT" ${m.status==='FT'?'selected':''}>Full Time</option></select></div></div><button onclick="pushLiveUpdate('${id}')" class="btn-save">PUSH UPDATE</button><button onclick="deleteLiveMatch('${id}')" style="background:transparent; color:var(--danger); border:none; width:100%; margin-top:10px;">Remove Control</button></div>`; }).join('')}</div></div><div class="card"><h3>2. NEWS POST</h3><input id="upTitle" placeholder="Title" class="admin-input"><textarea id="upText" placeholder="Content" class="admin-input"></textarea><button onclick="addPost()" class="btn-save">Post News</button></div><div class="card"><h3>3. GROUPS & TEAMS</h3><input id="adG" placeholder="Group Letter" class="admin-input"><button onclick="addGroup()" style="margin-bottom:10px">+ Add Group</button><input id="adT" placeholder="Team Name" class="admin-input"><button onclick="addTeam()">+ Add Team</button><div style="margin:15px 0">${Object.keys(data.groups).map(g => `<b>Group ${g}:</b> ${data.groups[g].map((t,i)=>`<span>${t}<button class="tag-remove" onclick="removeFromGroup('${g}',${i})">x</button></span>`).join(', ')}<br>`).join('')}</div><select id="selT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><select id="selG" class="admin-input">${Object.keys(data.groups).map(g=>`<option>${g}</option>`).join('')}</select><button onclick="assign()" class="btn-save">Confirm Assignment</button></div><div class="card"><h3>4. MATCH RESULTS (Group Stage)</h3><div style="max-height:400px; overflow-y:auto">${data.fixtures.map((f,i)=> `<div style="border-bottom:1px solid #334155; padding:10px 0"><b>${f.home} vs ${f.away}</b><br><div style="display:flex; gap:5px"><input id="dt${i}" value="${f.date||''}" placeholder="Date" class="admin-input"><input id="tm${i}" value="${f.time||''}" placeholder="Time" class="admin-input"><input id="pt${i}" value="${f.pitch||''}" placeholder="Pitch" class="admin-input"></div><input id="rs${i}" value="${data.results[i]||''}" placeholder="Score (1-0)" class="admin-input"><button onclick="updateF(${i})" style="width:100%; padding:8px;">Save Match ${i+1}</button></div>`).join('')}</div><button onclick="genFixtures()" class="btn-save" style="background:var(--accent)">Regenerate Alternating Fixtures</button></div><div class="card"><h3>5. KNOCKOUTS</h3><b>SF1: ${s1H} vs ${s1A}</b><div style="display:flex; gap:5px"><input id="ks1dt" class="admin-input" placeholder="Date" value="${data.ko.s1.dt||''}"><input id="ks1tm" class="admin-input" placeholder="Time" value="${data.ko.s1.tm||''}"><input id="ks1pt" class="admin-input" placeholder="Pitch" value="${data.ko.s1.pt||''}"></div><input id="ks1rs" class="admin-input" placeholder="Score" value="${data.ko.s1.res||''}"><b>SF2: ${s2H} vs ${s2A}</b><div style="display:flex; gap:5px"><input id="ks2dt" class="admin-input" placeholder="Date" value="${data.ko.s2.dt||''}"><input id="ks2tm" class="admin-input" placeholder="Time" value="${data.ko.s2.tm||''}"><input id="ks2pt" class="admin-input" placeholder="Pitch" value="${data.ko.s2.pt||''}"></div><input id="ks2rs" class="admin-input" placeholder="Score" value="${data.ko.s2.res||''}"><b>FINAL</b><div style="display:flex; gap:5px"><input id="kfdt" class="admin-input" placeholder="Date" value="${data.ko.f.dt||''}"><input id="kftm" class="admin-input" placeholder="Time" value="${data.ko.f.tm||''}"><input id="kfpt" class="admin-input" placeholder="Pitch" value="${data.ko.f.pt||''}"></div><input id="kfrs" class="admin-input" placeholder="Score" value="${data.ko.f.res||''}"> <button onclick="updateKO('${s1H}','${s1A}','${s2H}','${s2A}')" class="btn-save">Save Knockouts</button></div><div class="card"><h3>6. PLAYER STATS</h3><input id="scN" placeholder="Player Name" class="admin-input"><select id="scT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><input id="scG" placeholder="Quantity" class="admin-input" type="number"><button onclick="addScorer()">Add Goals</button><button onclick="addGK()" style="background:#475569">Add Clean Sheet</button></div><button onclick="wipe()" class="btn-save" style="background:var(--danger)">WIPE ALL DATA</button>`; document.getElementById('adminPanel').innerHTML = html;
+    let html = `<div class="card" style="border:1.5px solid var(--danger)"><h3 style="color:var(--danger)">1. LIVE MATCH ENGINE</h3><select id="liveMatchSelect" class="admin-input"><optgroup label="Groups">${data.fixtures.map((f,i)=>`<option value="${i}">${f.home} vs ${f.away}</option>`).join('')}</optgroup><optgroup label="Knockouts"><option value="ko-s1">Semi Final 1</option><option value="ko-s2">Semi Final 2</option><option value="ko-f">Grand Final</option></optgroup></select><button onclick="startLiveMatch()" class="btn-save" style="background:var(--danger)">Create Live Session</button><div id="liveAdminList">${Object.keys(liveEngine.matches).map(id => { const m = liveEngine.matches[id]; return `<div class="card" oninput="window.isAdminEditing=true" style="border-left:4px solid var(--accent); margin-top:15px"><div style="display:flex; justify-content:space-between"><b>${m.hName} vs ${m.aName}</b><button onclick="toggleLiveActive('${id}')" style="background:${m.active?'var(--danger)':'var(--success)'}; color:white; border:none; padding:4px 8px; border-radius:4px;">${m.active?'OFF':'GO LIVE'}</button></div><div style="text-align:center; margin:10px 0;"><button onclick="toggleLiveClock('${id}')" class="btn-save" style="padding:6px; margin:0; background:var(--accent); width:auto;">${m.running?'Stop Clock':'Start Clock'}</button><h2 id="clockDisplay-${id}">${formatLiveClock(m)}</h2></div><div class="admin-grid-live">${liveInput(id, 'hG', 'Home Score')}${liveInput(id, 'aG', 'Away Score')}<div class="admin-item-live"><label>Home Scorers</label><textarea id="hGoals-${id}">${m.hGoals}</textarea></div><div class="admin-item-live"><label>Away Scorers</label><textarea id="aGoals-${id}">${m.aGoals}</textarea></div>${liveInput(id, 'm', 'Current Min')}${liveInput(id, 's', 'Current Sec')}${liveInput(id, 'hP', 'H Poss%')}${liveInput(id, 'aP', 'A Poss%')}${liveInput(id, 'hSo', 'H S.On Target')}${liveInput(id, 'aSo', 'A S.On Target')}${liveInput(id, 'hSf', 'H S.Off Target')}${liveInput(id, 'aSf', 'A S.Off Target')}${liveInput(id, 'hOff', 'H Offsides')}${liveInput(id, 'aOff', 'A Offsides')}${liveInput(id, 'hC', 'H Corn')}${liveInput(id, 'aC', 'A Corn')}${liveInput(id, 'hF', 'H Foul')}${liveInput(id, 'aF', 'A Foul')}${liveInput(id, 'hY', 'H Yel')}${liveInput(id, 'aY', 'A Yel')}${liveInput(id, 'hR', 'H Red')}${liveInput(id, 'aR', 'A Red')}<div class="admin-item-live"><label>Extra Time (+)</label><input type="number" id="extra-${id}" value="${m.extra}"></div><div class="admin-item-live"><label>Period</label><select id="status-${id}" onchange="autoTime('${id}', this.value)" style="width:100%; background:var(--modal-bg); color:white; border:none;"><option value="1H" ${m.status==='1H'?'selected':''}>1st Half</option><option value="HT" ${m.status==='HT'?'selected':''}>Half Time</option><option value="2H" ${m.status==='2H'?'selected':''}>2nd Half</option><option value="ET1" ${m.status==='ET1'?'selected':''}>Ex.Time 1</option><option value="ET2" ${m.status==='ET2'?'selected':''}>Ex.Time 2</option><option value="PEN" ${m.status==='PEN'?'selected':''}>Penalties</option><option value="FT" ${m.status==='FT'?'selected':''}>Full Time</option></select></div></div><button onclick="pushLiveUpdate('${id}')" class="btn-save">PUSH UPDATE</button><button onclick="deleteLiveMatch('${id}')" style="background:transparent; color:var(--danger); border:none; width:100%; margin-top:10px;">Remove Control</button></div>`; }).join('')}</div></div><div class="card"><h3>2. NEWS POST</h3><input id="upTitle" placeholder="Title" class="admin-input"><textarea id="upText" placeholder="Content" class="admin-input"></textarea><button onclick="addPost()" class="btn-save">Post News</button></div><div class="card"><h3>3. GROUPS & TEAMS</h3><input id="adG" placeholder="Group Letter" class="admin-input"><button onclick="addGroup()" style="margin-bottom:10px">+ Add Group</button><input id="adT" placeholder="Team Name" class="admin-input"><button onclick="addTeam()">+ Add Team</button><div style="margin:15px 0">${Object.keys(data.groups).map(g => `<b>Group ${g}:</b> ${data.groups[g].map((t,i)=>`<span>${t}<button class="tag-remove" onclick="removeFromGroup('${g}',${i})">x</button></span>`).join(', ')}<br>`).join('')}</div><select id="selT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><select id="selG" class="admin-input">${Object.keys(data.groups).map(g=>`<option>${g}</option>`).join('')}</select><button onclick="assign()" class="btn-save">Confirm Assignment</button></div><div class="card"><h3>4. MATCH RESULTS (Group Stage)</h3><div style="max-height:400px; overflow-y:auto">${data.fixtures.map((f,i)=> `<div style="border-bottom:1px solid #334155; padding:10px 0"><b>${f.home} vs ${f.away}</b><br><div style="display:flex; gap:5px"><input id="dt${i}" value="${f.date||''}" placeholder="Date" class="admin-input"><input id="tm${i}" value="${f.time||''}" placeholder="Time" class="admin-input"><input id="pt${i}" value="${f.pitch||''}" placeholder="Pitch" class="admin-input"></div><input id="rs${i}" value="${data.results[i]||''}" placeholder="Score (1-0)" class="admin-input"><button onclick="updateF(${i})" style="width:100%; padding:8px;">Save Match ${i+1}</button></div>`).join('')}</div><button onclick="genFixtures()" class="btn-save" style="background:var(--accent)">Regenerate Fixtures</button></div><div class="card"><h3>5. KNOCKOUTS</h3><b>SF1: ${s1H} vs ${s1A}</b><div style="display:flex; gap:5px"><input id="ks1dt" class="admin-input" placeholder="Date" value="${data.ko.s1.dt||''}"><input id="ks1tm" class="admin-input" placeholder="Time" value="${data.ko.s1.tm||''}"><input id="ks1pt" class="admin-input" placeholder="Pitch" value="${data.ko.s1.pt||''}"></div><input id="ks1rs" class="admin-input" placeholder="Score" value="${data.ko.s1.res||''}"><b>SF2: ${s2H} vs ${s2A}</b><div style="display:flex; gap:5px"><input id="ks2dt" class="admin-input" placeholder="Date" value="${data.ko.s2.dt||''}"><input id="ks2tm" class="admin-input" placeholder="Time" value="${data.ko.s2.tm||''}"><input id="ks2pt" class="admin-input" placeholder="Pitch" value="${data.ko.s2.pt||''}"></div><input id="ks2rs" class="admin-input" placeholder="Score" value="${data.ko.s2.res||''}"><b>FINAL</b><div style="display:flex; gap:5px"><input id="kfdt" class="admin-input" placeholder="Date" value="${data.ko.f.dt||''}"><input id="kftm" class="admin-input" placeholder="Time" value="${data.ko.f.tm||''}"><input id="kfpt" class="admin-input" placeholder="Pitch" value="${data.ko.f.pt||''}"></div><input id="kfrs" class="admin-input" placeholder="Score" value="${data.ko.f.res||''}"> <button onclick="updateKO('${s1H}','${s1A}','${s2H}','${s2A}')" class="btn-save">Save Knockouts</button></div><div class="card"><h3>6. PLAYER STATS</h3><input id="scN" placeholder="Player Name" class="admin-input"><select id="scT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><input id="scG" placeholder="Quantity" class="admin-input" type="number"><button onclick="addScorer()">Add Goals</button><button onclick="addGK()" style="background:#475569">Add Clean Sheet</button></div><button onclick="wipe()" class="btn-save" style="background:var(--danger)">WIPE ALL DATA</button>`; document.getElementById('adminPanel').innerHTML = html;
 }
 
 function updateF(i) {
@@ -443,19 +443,53 @@ function addGK() { const n = document.getElementById('scN').value, t = document.
 function wipe() { if(confirm("PERMANENTLY WIPE EVERYTHING?")) { data = { teams: [], groups: {}, fixtures: [], results: {}, scorers: [], gks: [], ko: { s1: {}, s2: {}, f: {} }, posts: [] }; liveEngine = { matches: {} }; db.collection("kesale").doc("live").set(data); db.collection("kesale").doc("live_engine").set(liveEngine).then(()=>location.reload()); } }
 
 function genFixtures() {
-    let fix = []; const gKeys = Object.keys(data.groups).sort();
-    // Your Exact Fixturing Pattern: Round 1: 1v2, 3v4 | Round 2: 1v3, 2v4 | Round 3: 1v4, 2v3
-    let patterns = [[0,1], [2,3], [0,2], [1,3], [0,3], [1,2]];
-    patterns.forEach(p => {
+    let groupMatches = {};
+    const gKeys = Object.keys(data.groups).sort();
+    
+    // 1. Generate full round-robin matches for each group independently
+    gKeys.forEach(g => {
+        let teams = [...data.groups[g]];
+        if (teams.length < 2) return;
+        
+        let matches = [];
+        let n = teams.length;
+        let isOdd = n % 2 !== 0;
+        if (isOdd) {
+            teams.push("BYE_DUMMY");
+            n++;
+        }
+        
+        const rounds = n - 1;
+        const half = n / 2;
+        
+        for (let r = 0; r < rounds; r++) {
+            for (let i = 0; i < half; i++) {
+                const home = teams[i];
+                const away = teams[n - 1 - i];
+                if (home !== "BYE_DUMMY" && away !== "BYE_DUMMY") {
+                    matches.push({ group: g, home: home, away: away });
+                }
+            }
+            teams.splice(1, 0, teams.pop()); // Rotate
+        }
+        groupMatches[g] = matches;
+    });
+    
+    // 2. Interleave matches between groups (Group A Match 1, Group B Match 1, etc.)
+    let interleaved = [];
+    let maxMatches = Math.max(...Object.values(groupMatches).map(m => m.length), 0);
+    
+    for (let i = 0; i < maxMatches; i++) {
         gKeys.forEach(g => {
-            const teams = data.groups[g];
-            if(teams[p[0]] && teams[p[1]]) {
-                fix.push({ group: g, home: teams[p[0]], away: teams[p[1]] });
+            if (groupMatches[g][i]) {
+                interleaved.push(groupMatches[g][i]);
             }
         });
-    });
-    data.fixtures = fix; data.results = {}; 
-    db.collection("kesale").doc("live").set(data).then(() => notify("Exact Fixture Pattern Generated!"));
+    }
+    
+    data.fixtures = interleaved; 
+    data.results = {}; 
+    db.collection("kesale").doc("live").set(data).then(() => notify("All teams included and group-alternating fixtures generated!"));
 }
 
 window.onload = load;
