@@ -86,6 +86,8 @@
     .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--modal-bg); padding: 40px; border-radius: 24px; z-index: 1000; width: 90%; max-width: 420px; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 25px 70px rgba(0,0,0,0.7); backdrop-filter: blur(10px); }
     .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.88); z-index: 999; backdrop-filter: blur(6px); }
     .footer { text-align: center; padding: 40px 20px; color: #64748b; font-size: 13px; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 50px; }
+    .nb-tab-btn { white-space:nowrap; padding:8px 18px; border-radius:20px; border:1px solid #a855f7; background:transparent; color:#a855f7; cursor:pointer; font-weight:600; font-size:11px; transition:0.3s; }
+    .nb-tab-active { background:#a855f7; color:white; box-shadow:0 4px 15px rgba(168,85,247,0.35); }
 </style>
 </head>
 <body>
@@ -103,20 +105,45 @@
     <button onclick="showSec('groups', this)">STANDINGS</button>
     <button onclick="showSec('fixtures', this)">FIXTURES</button>
     <button onclick="showSec('live-match', this)" style="color:var(--danger); border-color:var(--danger)">● LIVE</button>
+    <button id="btnQF" onclick="showSec('quarters', this)" style="display:none">QUARTER FINAL</button>
     <button onclick="showSec('semis', this)">SEMI FINAL</button>
     <button onclick="showSec('final', this)">FINAL</button>
     <button onclick="showSec('leaderboard', this)">LEADERBOARD</button>
     <button onclick="showSec('updates', this)" id="btnUpdates">UPDATES</button>
+    <button onclick="showSec('netball', this)" style="color:#a855f7; border-color:#a855f7; font-weight:800;">🏐 NETBALL</button>
 </nav>
 
 <section id="teams" class="active"></section>
 <section id="groups"></section>
 <section id="fixtures"></section>
 <section id="live-match"><h2>Live Match Updates</h2><div id="live-container"></div></section>
+<section id="quarters"></section>
 <section id="semis"></section>
 <section id="final"></section>
 <section id="leaderboard"></section>
 <section id="updates"><h2>Latest Updates</h2><div id="updatesList"></div></section>
+
+<!-- ===== NETBALL SECTION ===== -->
+<section id="netball">
+    <div style="text-align:center;margin-bottom:30px;">
+        <h2 style="color:#a855f7;">🏐 NETBALL</h2>
+        <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:10px;">
+            <button onclick="nbShowTab('nb-teams')" id="nb-btn-teams" class="nb-tab-btn nb-tab-active">TEAMS</button>
+            <button onclick="nbShowTab('nb-groups')" id="nb-btn-groups" class="nb-tab-btn">STANDINGS</button>
+            <button onclick="nbShowTab('nb-fixtures')" id="nb-btn-fixtures" class="nb-tab-btn">FIXTURES</button>
+            <button onclick="nbShowTab('nb-quarters')" id="nb-btn-quarters" class="nb-tab-btn" style="display:none">QUARTER FINAL</button>
+            <button onclick="nbShowTab('nb-semis')" id="nb-btn-semis" class="nb-tab-btn">SEMI FINAL</button>
+            <button onclick="nbShowTab('nb-final')" id="nb-btn-final" class="nb-tab-btn">FINAL</button>
+        </div>
+    </div>
+    <div id="nb-teams"></div>
+    <div id="nb-groups" style="display:none"></div>
+    <div id="nb-fixtures" style="display:none"></div>
+    <div id="nb-quarters" style="display:none"></div>
+    <div id="nb-semis" style="display:none"></div>
+    <div id="nb-final" style="display:none"></div>
+</section>
+<!-- ===== END NETBALL SECTION ===== -->
 
 <section id="admin">
     <div id="loginBox" class="card" style="max-width: 400px; margin: auto;">
@@ -126,6 +153,8 @@
         <button id="loginBtn" onclick="login()" class="btn-save" style="background:var(--accent)">Login</button>
     </div>
     <div id="adminPanel" style="display:none"></div>
+    <!-- NETBALL ADMIN PANEL -->
+    <div id="nbAdminPanel" style="display:none;margin-top:20px;border-top:2px solid #a855f7;padding-top:20px;"><h2 style="color:#a855f7;text-align:center;">🏐 NETBALL ADMIN</h2></div>
 </section>
 
 <div class="footer">All rights reserved, a product by Rished Kassimu</div>
@@ -145,9 +174,13 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
-let data = { teams: [], groups: {}, fixtures: [], results: {}, scorers: [], gks: [], ko: { s1: {}, s2: {}, f: {} }, posts: [] };
+let data = { teams: [], groups: {}, fixtures: [], results: {}, scorers: [], gks: [], ko: { qf1: {}, qf2: {}, qf3: {}, qf4: {}, s1: {}, s2: {}, f: {} }, posts: [] };
 let liveEngine = { matches: {} }; 
 window.isAdminEditing = false;
+
+/* ===== NETBALL DATA ===== */
+let nbData = { teams: [], groups: {}, fixtures: [], results: {}, ko: { qf1:{}, qf2:{}, qf3:{}, qf4:{}, s1:{}, s2:{}, f:{} } };
+/* ===== END NETBALL DATA ===== */
 
 function notify(msg = "Success! Data Updated.") {
     const t = document.getElementById('toast');
@@ -168,6 +201,7 @@ function login() {
         document.getElementById('adminPanel').style.display = "block";
         notify("Logged in successfully!");
         renderAdmin();
+        /* show netball admin */ document.getElementById('nbAdminPanel').style.display='block'; nbRenderAdmin();
     })
     .catch((error) => {
         btn.innerText = "Login";
@@ -182,9 +216,15 @@ async function load() {
             renderAll();
             if(document.getElementById('adminPanel').style.display === 'block') {
                 renderAdmin();
+                nbRenderAdmin();
             }
         }
     });
+    /* ===== NETBALL FIRESTORE LISTENER ===== */
+    db.collection("kesale").doc("netball").onSnapshot(doc => {
+        if(doc.exists) { nbData = doc.data(); nbRenderAll(); if(document.getElementById('adminPanel').style.display==='block') nbRenderAdmin(); }
+    });
+    /* ===== END NETBALL FIRESTORE LISTENER ===== */
     db.collection("kesale").doc("live_engine").onSnapshot(doc => {
         if(doc.exists) {
             liveEngine = doc.data();
@@ -251,6 +291,7 @@ function showSec(id, btn) {
     if(id !== 'admin') {
         document.getElementById('loginBox').style.display = "block";
         document.getElementById('adminPanel').style.display = "none";
+        document.getElementById('nbAdminPanel').style.display = "none";
     }
     window.scrollTo({top: 0, behavior: 'smooth'});
 }
@@ -295,7 +336,34 @@ function renderAll() {
         s2H = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[0] || '1st B';
         s2A = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[1] || '2nd A';
     }
-    
+
+    /* ===== QUARTER FINAL ADDITION (only active when both groups have exactly 5 teams) ===== */
+    var _qfActive = grps.length >= 2 && (data.groups[grps[0]]||[]).length === 5 && (data.groups[grps[1]]||[]).length === 5;
+    var _btnQF = document.getElementById('btnQF');
+    if(_btnQF) _btnQF.style.display = _qfActive ? 'inline-block' : 'none';
+    if(_qfActive) {
+        if(!data.ko.qf1) data.ko.qf1={}; if(!data.ko.qf2) data.ko.qf2={};
+        if(!data.ko.qf3) data.ko.qf3={}; if(!data.ko.qf4) data.ko.qf4={};
+        var _sA = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd);
+        var _sB = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd);
+        var _qfList = [
+            { h:_sA[0]||'1st A', a:_sB[2]||'3rd B', ko:data.ko.qf1, lbl:'QF 1' },
+            { h:_sA[1]||'2nd A', a:_sB[3]||'4th B', ko:data.ko.qf2, lbl:'QF 2' },
+            { h:_sB[0]||'1st B', a:_sA[2]||'3rd A', ko:data.ko.qf3, lbl:'QF 3' },
+            { h:_sB[1]||'2nd B', a:_sA[3]||'4th A', ko:data.ko.qf4, lbl:'QF 4' }
+        ];
+        var _qfWin = function(ko,h,a){ if(ko.win) return ko.win; if(ko.res&&ko.res.includes('-')){var p=ko.res.split('-');return parseInt(p[0])>parseInt(p[1])?h:a;} return null; };
+        var _qfWins = _qfList.map(function(q){return _qfWin(q.ko,q.h,q.a);});
+        document.getElementById('quarters').innerHTML = '<h2>Quarter Finals</h2>' + _qfList.map(function(q){
+            return '<div class="card"><div style="font-size:10px;font-weight:700;color:var(--gold);text-align:center;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">'+q.lbl+'</div><div style="font-size:11px;text-align:center;color:#94a3b8;margin-bottom:10px;">'+(q.ko.dt||'')+' \u2022 '+(q.ko.tm||'')+' \u2022 <span style="color:var(--accent)">'+(q.ko.pt||'TBA')+'</span></div><div class="fixture-box"><span class="fixture-team" style="text-align:right">'+q.h+'</span><span class="fixture-score-box">'+(q.ko.res||'VS')+'</span><span class="fixture-team" style="text-align:left">'+q.a+'</span></div></div>';
+        }).join('');
+        s1H = _qfWins[0]||'QF1 Winner'; s1A = _qfWins[1]||'QF2 Winner';
+        s2H = _qfWins[2]||'QF3 Winner'; s2A = _qfWins[3]||'QF4 Winner';
+    } else {
+        document.getElementById('quarters').innerHTML = '';
+    }
+    /* ===== END QUARTER FINAL ADDITION ===== */
+
     document.getElementById('semis').innerHTML = `<h2>Semi-Finals</h2>
         <div class="card">
             <div style="font-size:11px; text-align:center; color:#94a3b8; margin-bottom:10px;">
@@ -353,7 +421,14 @@ function startLiveMatch() {
     if (val.startsWith('ko-')) {
         const type = val.replace('ko-', '');
         const grps = Object.keys(data.groups).sort();
-        if (type === 's1') {
+        /* ===== QF LIVE ADDITION ===== */
+        if (type.startsWith('qf')) {
+            var _lSA=[...(data.groups[grps[0]]||[])].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd);
+            var _lSB=[...(data.groups[grps[1]]||[])].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd);
+            var _lMap={qf1:[_lSA[0]||'1st A',_lSB[2]||'3rd B'],qf2:[_lSA[1]||'2nd A',_lSB[3]||'4th B'],qf3:[_lSB[0]||'1st B',_lSA[2]||'3rd A'],qf4:[_lSB[1]||'2nd B',_lSA[3]||'4th A']};
+            home=_lMap[type][0]; away=_lMap[type][1]; id=type.toUpperCase()+'-'+Date.now();
+        /* ===== END QF LIVE ADDITION ===== */
+        } else if (type === 's1') {
             home = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[0] || '1st A';
             away = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[1] || '2nd B';
             id = "SF1-" + Date.now();
@@ -405,7 +480,36 @@ function renderAdmin() {
         s2H = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[0] || '1st B';
         s2A = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[1] || '2nd A';
     }
-    let html = `<div class="card" style="border:1.5px solid var(--danger)"><h3 style="color:var(--danger)">1. LIVE MATCH ENGINE</h3><select id="liveMatchSelect" class="admin-input"><optgroup label="Groups">${data.fixtures.map((f,i)=>`<option value="${i}">${f.home} vs ${f.away}</option>`).join('')}</optgroup><optgroup label="Knockouts"><option value="ko-s1">Semi Final 1</option><option value="ko-s2">Semi Final 2</option><option value="ko-f">Grand Final</option></optgroup></select><button onclick="startLiveMatch()" class="btn-save" style="background:var(--danger)">Create Live Session</button><div id="liveAdminList">${Object.keys(liveEngine.matches).map(id => { const m = liveEngine.matches[id]; return `<div class="card" oninput="window.isAdminEditing=true" style="border-left:4px solid var(--accent); margin-top:15px"><div style="display:flex; justify-content:space-between"><b>${m.hName} vs ${m.aName}</b><button onclick="toggleLiveActive('${id}')" style="background:${m.active?'var(--danger)':'var(--success)'}; color:white; border:none; padding:4px 8px; border-radius:4px;">${m.active?'OFF':'GO LIVE'}</button></div><div style="text-align:center; margin:10px 0;"><button onclick="toggleLiveClock('${id}')" class="btn-save" style="padding:6px; margin:0; background:var(--accent); width:auto;">${m.running?'Stop Clock':'Start Clock'}</button><h2 id="clockDisplay-${id}">${formatLiveClock(m)}</h2></div><div class="admin-grid-live">${liveInput(id, 'hG', 'Home Score')}${liveInput(id, 'aG', 'Away Score')}<div class="admin-item-live"><label>Home Scorers</label><textarea id="hGoals-${id}">${m.hGoals}</textarea></div><div class="admin-item-live"><label>Away Scorers</label><textarea id="aGoals-${id}">${m.aGoals}</textarea></div>${liveInput(id, 'm', 'Current Min')}${liveInput(id, 's', 'Current Sec')}${liveInput(id, 'hP', 'H Poss%')}${liveInput(id, 'aP', 'A Poss%')}${liveInput(id, 'hSo', 'H S.On Target')}${liveInput(id, 'aSo', 'A S.On Target')}${liveInput(id, 'hSf', 'H S.Off Target')}${liveInput(id, 'aSf', 'A S.Off Target')}${liveInput(id, 'hOff', 'H Offsides')}${liveInput(id, 'aOff', 'A Offsides')}${liveInput(id, 'hC', 'H Corn')}${liveInput(id, 'aC', 'A Corn')}${liveInput(id, 'hF', 'H Foul')}${liveInput(id, 'aF', 'A Foul')}${liveInput(id, 'hY', 'H Yel')}${liveInput(id, 'aY', 'A Yel')}${liveInput(id, 'hR', 'H Red')}${liveInput(id, 'aR', 'A Red')}<div class="admin-item-live"><label>Extra Time (+)</label><input type="number" id="extra-${id}" value="${m.extra}"></div><div class="admin-item-live"><label>Period</label><select id="status-${id}" onchange="autoTime('${id}', this.value)" style="width:100%; background:var(--modal-bg); color:white; border:none;"><option value="1H" ${m.status==='1H'?'selected':''}>1st Half</option><option value="HT" ${m.status==='HT'?'selected':''}>Half Time</option><option value="2H" ${m.status==='2H'?'selected':''}>2nd Half</option><option value="ET1" ${m.status==='ET1'?'selected':''}>Ex.Time 1</option><option value="ET2" ${m.status==='ET2'?'selected':''}>Ex.Time 2</option><option value="PEN" ${m.status==='PEN'?'selected':''}>Penalties</option><option value="FT" ${m.status==='FT'?'selected':''}>Full Time</option></select></div></div><button onclick="pushLiveUpdate('${id}')" class="btn-save">PUSH UPDATE</button><button onclick="deleteLiveMatch('${id}')" style="background:transparent; color:var(--danger); border:none; width:100%; margin-top:10px;">Remove Control</button></div>`; }).join('')}</div></div><div class="card"><h3>2. NEWS POST</h3><input id="upTitle" placeholder="Title" class="admin-input"><textarea id="upText" placeholder="Content" class="admin-input"></textarea><button onclick="addPost()" class="btn-save">Post News</button></div><div class="card"><h3>3. GROUPS & TEAMS</h3><input id="adG" placeholder="Group Letter" class="admin-input"><button onclick="addGroup()" style="margin-bottom:10px">+ Add Group</button><input id="adT" placeholder="Team Name" class="admin-input"><button onclick="addTeam()">+ Add Team</button><div style="margin:15px 0">${Object.keys(data.groups).map(g => `<b>Group ${g}:</b> ${data.groups[g].map((t,i)=>`<span>${t}<button class="tag-remove" onclick="removeFromGroup('${g}',${i})">x</button></span>`).join(', ')}<br>`).join('')}</div><select id="selT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><select id="selG" class="admin-input">${Object.keys(data.groups).map(g=>`<option>${g}</option>`).join('')}</select><button onclick="assign()" class="btn-save">Confirm Assignment</button></div><div class="card"><h3>4. MATCH RESULTS (Group Stage)</h3><div style="max-height:400px; overflow-y:auto">${data.fixtures.map((f,i)=> `<div style="border-bottom:1px solid #334155; padding:10px 0"><b>${f.home} vs ${f.away}</b><br><div style="display:flex; gap:5px"><input id="dt${i}" value="${f.date||''}" placeholder="Date" class="admin-input"><input id="tm${i}" value="${f.time||''}" placeholder="Time" class="admin-input"><input id="pt${i}" value="${f.pitch||''}" placeholder="Pitch" class="admin-input"></div><input id="rs${i}" value="${data.results[i]||''}" placeholder="Score (1-0)" class="admin-input"><button onclick="updateF(${i})" style="width:100%; padding:8px;">Save Match ${i+1}</button></div>`).join('')}</div><button onclick="genFixtures()" class="btn-save" style="background:var(--accent)">Regenerate Fixtures</button></div><div class="card"><h3>5. KNOCKOUTS</h3><b>SF1: ${s1H} vs ${s1A}</b><div style="display:flex; gap:5px"><input id="ks1dt" class="admin-input" placeholder="Date" value="${data.ko.s1.dt||''}"><input id="ks1tm" class="admin-input" placeholder="Time" value="${data.ko.s1.tm||''}"><input id="ks1pt" class="admin-input" placeholder="Pitch" value="${data.ko.s1.pt||''}"></div><input id="ks1rs" class="admin-input" placeholder="Score" value="${data.ko.s1.res||''}"><b>SF2: ${s2H} vs ${s2A}</b><div style="display:flex; gap:5px"><input id="ks2dt" class="admin-input" placeholder="Date" value="${data.ko.s2.dt||''}"><input id="ks2tm" class="admin-input" placeholder="Time" value="${data.ko.s2.tm||''}"><input id="ks2pt" class="admin-input" placeholder="Pitch" value="${data.ko.s2.pt||''}"></div><input id="ks2rs" class="admin-input" placeholder="Score" value="${data.ko.s2.res||''}"><b>FINAL</b><div style="display:flex; gap:5px"><input id="kfdt" class="admin-input" placeholder="Date" value="${data.ko.f.dt||''}"><input id="kftm" class="admin-input" placeholder="Time" value="${data.ko.f.tm||''}"><input id="kfpt" class="admin-input" placeholder="Pitch" value="${data.ko.f.pt||''}"></div><input id="kfrs" class="admin-input" placeholder="Score" value="${data.ko.f.res||''}"> <button onclick="updateKO('${s1H}','${s1A}','${s2H}','${s2A}')" class="btn-save">Save Knockouts</button></div><div class="card"><h3>6. PLAYER STATS</h3><input id="scN" placeholder="Player Name" class="admin-input"><select id="scT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><input id="scG" placeholder="Quantity" class="admin-input" type="number"><button onclick="addScorer()">Add Goals</button><button onclick="addGK()" style="background:#475569">Add Clean Sheet</button></div><button onclick="wipe()" class="btn-save" style="background:var(--danger)">WIPE ALL DATA</button>`; document.getElementById('adminPanel').innerHTML = html;
+    let html = `<div class="card" style="border:1.5px solid var(--danger)"><h3 style="color:var(--danger)">1. LIVE MATCH ENGINE</h3><select id="liveMatchSelect" class="admin-input"><optgroup label="Groups">${data.fixtures.map((f,i)=>`<option value="${i}">${f.home} vs ${f.away}</option>`).join('')}</optgroup><optgroup label="Knockouts"><option value="ko-qf1">Quarter Final 1</option><option value="ko-qf2">Quarter Final 2</option><option value="ko-qf3">Quarter Final 3</option><option value="ko-qf4">Quarter Final 4</option><option value="ko-s1">Semi Final 1</option><option value="ko-s2">Semi Final 2</option><option value="ko-f">Grand Final</option></optgroup></select><button onclick="startLiveMatch()" class="btn-save" style="background:var(--danger)">Create Live Session</button><div id="liveAdminList">${Object.keys(liveEngine.matches).map(id => { const m = liveEngine.matches[id]; return `<div class="card" oninput="window.isAdminEditing=true" style="border-left:4px solid var(--accent); margin-top:15px"><div style="display:flex; justify-content:space-between"><b>${m.hName} vs ${m.aName}</b><button onclick="toggleLiveActive('${id}')" style="background:${m.active?'var(--danger)':'var(--success)'}; color:white; border:none; padding:4px 8px; border-radius:4px;">${m.active?'OFF':'GO LIVE'}</button></div><div style="text-align:center; margin:10px 0;"><button onclick="toggleLiveClock('${id}')" class="btn-save" style="padding:6px; margin:0; background:var(--accent); width:auto;">${m.running?'Stop Clock':'Start Clock'}</button><h2 id="clockDisplay-${id}">${formatLiveClock(m)}</h2></div><div class="admin-grid-live">${liveInput(id, 'hG', 'Home Score')}${liveInput(id, 'aG', 'Away Score')}<div class="admin-item-live"><label>Home Scorers</label><textarea id="hGoals-${id}">${m.hGoals}</textarea></div><div class="admin-item-live"><label>Away Scorers</label><textarea id="aGoals-${id}">${m.aGoals}</textarea></div>${liveInput(id, 'm', 'Current Min')}${liveInput(id, 's', 'Current Sec')}${liveInput(id, 'hP', 'H Poss%')}${liveInput(id, 'aP', 'A Poss%')}${liveInput(id, 'hSo', 'H S.On Target')}${liveInput(id, 'aSo', 'A S.On Target')}${liveInput(id, 'hSf', 'H S.Off Target')}${liveInput(id, 'aSf', 'A S.Off Target')}${liveInput(id, 'hOff', 'H Offsides')}${liveInput(id, 'aOff', 'A Offsides')}${liveInput(id, 'hC', 'H Corn')}${liveInput(id, 'aC', 'A Corn')}${liveInput(id, 'hF', 'H Foul')}${liveInput(id, 'aF', 'A Foul')}${liveInput(id, 'hY', 'H Yel')}${liveInput(id, 'aY', 'A Yel')}${liveInput(id, 'hR', 'H Red')}${liveInput(id, 'aR', 'A Red')}<div class="admin-item-live"><label>Extra Time (+)</label><input type="number" id="extra-${id}" value="${m.extra}"></div><div class="admin-item-live"><label>Period</label><select id="status-${id}" onchange="autoTime('${id}', this.value)" style="width:100%; background:var(--modal-bg); color:white; border:none;"><option value="1H" ${m.status==='1H'?'selected':''}>1st Half</option><option value="HT" ${m.status==='HT'?'selected':''}>Half Time</option><option value="2H" ${m.status==='2H'?'selected':''}>2nd Half</option><option value="ET1" ${m.status==='ET1'?'selected':''}>Ex.Time 1</option><option value="ET2" ${m.status==='ET2'?'selected':''}>Ex.Time 2</option><option value="PEN" ${m.status==='PEN'?'selected':''}>Penalties</option><option value="FT" ${m.status==='FT'?'selected':''}>Full Time</option></select></div></div><button onclick="pushLiveUpdate('${id}')" class="btn-save">PUSH UPDATE</button><button onclick="deleteLiveMatch('${id}')" style="background:transparent; color:var(--danger); border:none; width:100%; margin-top:10px;">Remove Control</button></div>`; }).join('')}</div></div><div class="card"><h3>2. NEWS POST</h3><input id="upTitle" placeholder="Title" class="admin-input"><textarea id="upText" placeholder="Content" class="admin-input"></textarea><button onclick="addPost()" class="btn-save">Post News</button></div><div class="card"><h3>3. GROUPS & TEAMS</h3><input id="adG" placeholder="Group Letter" class="admin-input"><button onclick="addGroup()" style="margin-bottom:10px">+ Add Group</button><input id="adT" placeholder="Team Name" class="admin-input"><button onclick="addTeam()">+ Add Team</button><div style="margin:15px 0">${Object.keys(data.groups).map(g => `<b>Group ${g}:</b> ${data.groups[g].map((t,i)=>`<span>${t}<button class="tag-remove" onclick="removeFromGroup('${g}',${i})">x</button></span>`).join(', ')}<br>`).join('')}</div><select id="selT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><select id="selG" class="admin-input">${Object.keys(data.groups).map(g=>`<option>${g}</option>`).join('')}</select><button onclick="assign()" class="btn-save">Confirm Assignment</button></div><div class="card"><h3>4. MATCH RESULTS (Group Stage)</h3><div style="max-height:400px; overflow-y:auto">${data.fixtures.map((f,i)=> `<div style="border-bottom:1px solid #334155; padding:10px 0"><b>${f.home} vs ${f.away}</b><br><div style="display:flex; gap:5px"><input id="dt${i}" value="${f.date||''}" placeholder="Date" class="admin-input"><input id="tm${i}" value="${f.time||''}" placeholder="Time" class="admin-input"><input id="pt${i}" value="${f.pitch||''}" placeholder="Pitch" class="admin-input"></div><input id="rs${i}" value="${data.results[i]||''}" placeholder="Score (1-0)" class="admin-input"><button onclick="updateF(${i})" style="width:100%; padding:8px;">Save Match ${i+1}</button></div>`).join('')}</div><button onclick="genFixtures()" class="btn-save" style="background:var(--accent)">Regenerate Fixtures</button></div><div class="card" id="qfAdminCard" style="display:none;border:1.5px solid var(--gold)"><h3 style="color:var(--gold)">5a. QUARTER FINALS</h3><div id="qfAdminInner"></div><button onclick="saveQF()" class="btn-save" style="background:var(--gold);color:#020617;font-weight:800;">Save Quarter Finals</button></div><div class="card"><h3>5. KNOCKOUTS</h3><b>SF1: ${s1H} vs ${s1A}</b><div style="display:flex; gap:5px"><input id="ks1dt" class="admin-input" placeholder="Date" value="${data.ko.s1.dt||''}"><input id="ks1tm" class="admin-input" placeholder="Time" value="${data.ko.s1.tm||''}"><input id="ks1pt" class="admin-input" placeholder="Pitch" value="${data.ko.s1.pt||''}"></div><input id="ks1rs" class="admin-input" placeholder="Score" value="${data.ko.s1.res||''}"><b>SF2: ${s2H} vs ${s2A}</b><div style="display:flex; gap:5px"><input id="ks2dt" class="admin-input" placeholder="Date" value="${data.ko.s2.dt||''}"><input id="ks2tm" class="admin-input" placeholder="Time" value="${data.ko.s2.tm||''}"><input id="ks2pt" class="admin-input" placeholder="Pitch" value="${data.ko.s2.pt||''}"></div><input id="ks2rs" class="admin-input" placeholder="Score" value="${data.ko.s2.res||''}"><b>FINAL</b><div style="display:flex; gap:5px"><input id="kfdt" class="admin-input" placeholder="Date" value="${data.ko.f.dt||''}"><input id="kftm" class="admin-input" placeholder="Time" value="${data.ko.f.tm||''}"><input id="kfpt" class="admin-input" placeholder="Pitch" value="${data.ko.f.pt||''}"></div><input id="kfrs" class="admin-input" placeholder="Score" value="${data.ko.f.res||''}"> <button onclick="updateKO('${s1H}','${s1A}','${s2H}','${s2A}')" class="btn-save">Save Knockouts</button></div><div class="card"><h3>6. PLAYER STATS</h3><input id="scN" placeholder="Player Name" class="admin-input"><select id="scT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><input id="scG" placeholder="Quantity" class="admin-input" type="number"><button onclick="addScorer()">Add Goals</button><button onclick="addGK()" style="background:#475569">Add Clean Sheet</button></div><button onclick="wipe()" class="btn-save" style="background:var(--danger)">WIPE ALL DATA</button>`; document.getElementById('adminPanel').innerHTML = html;
+    /* ===== QF ADMIN ADDITION ===== */
+    var _qaGrps = Object.keys(data.groups).sort();
+    var _qaHas5 = _qaGrps.length>=2 && (data.groups[_qaGrps[0]]||[]).length===5 && (data.groups[_qaGrps[1]]||[]).length===5;
+    var _qaCard = document.getElementById('qfAdminCard');
+    if(_qaCard) {
+        _qaCard.style.display = _qaHas5 ? 'block' : 'none';
+        if(_qaHas5) {
+            if(!data.ko.qf1)data.ko.qf1={}; if(!data.ko.qf2)data.ko.qf2={};
+            if(!data.ko.qf3)data.ko.qf3={}; if(!data.ko.qf4)data.ko.qf4={};
+            var _qaSA=[...(data.groups[_qaGrps[0]]||[])].sort(function(a,b){return (getStats(b).pts-getStats(a).pts)||getStats(b).gd-getStats(a).gd;});
+            var _qaSB=[...(data.groups[_qaGrps[1]]||[])].sort(function(a,b){return (getStats(b).pts-getStats(a).pts)||getStats(b).gd-getStats(a).gd;});
+            var _qaM=[
+                {id:'qf1',lbl:'QF1',h:_qaSA[0]||'1st A',a:_qaSB[2]||'3rd B',ko:data.ko.qf1},
+                {id:'qf2',lbl:'QF2',h:_qaSA[1]||'2nd A',a:_qaSB[3]||'4th B',ko:data.ko.qf2},
+                {id:'qf3',lbl:'QF3',h:_qaSB[0]||'1st B',a:_qaSA[2]||'3rd A',ko:data.ko.qf3},
+                {id:'qf4',lbl:'QF4',h:_qaSB[1]||'2nd B',a:_qaSA[3]||'4th A',ko:data.ko.qf4}
+            ];
+            document.getElementById('qfAdminInner').innerHTML = _qaM.map(function(m){
+                return '<b>'+m.lbl+': '+m.h+' vs '+m.a+'</b>'
+                    +'<div style="display:flex;gap:5px">'
+                    +'<input id="k'+m.id+'dt" class="admin-input" placeholder="Date" value="'+(m.ko.dt||'')+'">'
+                    +'<input id="k'+m.id+'tm" class="admin-input" placeholder="Time" value="'+(m.ko.tm||'')+'">'
+                    +'<input id="k'+m.id+'pt" class="admin-input" placeholder="Pitch" value="'+(m.ko.pt||'')+'">'
+                    +'</div>'
+                    +'<input id="k'+m.id+'rs" class="admin-input" placeholder="Score (1-0)" value="'+(m.ko.res||'')+'">';
+            }).join('');
+        }
+    }
+    /* ===== END QF ADMIN ADDITION ===== */
 }
 
 function updateF(i) {
@@ -415,6 +519,30 @@ function updateF(i) {
     data.results[i] = document.getElementById(`rs${i}`).value;
     db.collection("kesale").doc("live").set(data).then(() => notify());
 }
+
+/* ===== QUARTER FINAL SAVE FUNCTION ===== */
+function saveQF() {
+    var _qaGrps = Object.keys(data.groups).sort();
+    if(_qaGrps.length<2) return;
+    if(!data.ko.qf1)data.ko.qf1={}; if(!data.ko.qf2)data.ko.qf2={};
+    if(!data.ko.qf3)data.ko.qf3={}; if(!data.ko.qf4)data.ko.qf4={};
+    var _qaSA=[...(data.groups[_qaGrps[0]]||[])].sort(function(a,b){return (getStats(b).pts-getStats(a).pts)||getStats(b).gd-getStats(a).gd;});
+    var _qaSB=[...(data.groups[_qaGrps[1]]||[])].sort(function(a,b){return (getStats(b).pts-getStats(a).pts)||getStats(b).gd-getStats(a).gd;});
+    var _qfDefs=[
+        {id:'qf1',h:_qaSA[0]||'1st A',a:_qaSB[2]||'3rd B'},
+        {id:'qf2',h:_qaSA[1]||'2nd A',a:_qaSB[3]||'4th B'},
+        {id:'qf3',h:_qaSB[0]||'1st B',a:_qaSA[2]||'3rd A'},
+        {id:'qf4',h:_qaSB[1]||'2nd B',a:_qaSA[3]||'4th A'}
+    ];
+    var _qfW=function(res,h,a){if(res&&res.includes('-')){var p=res.split('-');return parseInt(p[0])>parseInt(p[1])?h:a;}return null;};
+    _qfDefs.forEach(function(q){
+        var dt=document.getElementById('k'+q.id+'dt'),tm=document.getElementById('k'+q.id+'tm'),pt=document.getElementById('k'+q.id+'pt'),rs=document.getElementById('k'+q.id+'rs');
+        if(!dt) return;
+        data.ko[q.id]={dt:dt.value,tm:tm.value,pt:pt.value,res:rs.value,win:_qfW(rs.value,q.h,q.a)};
+    });
+    db.collection('kesale').doc('live').set(data).then(function(){notify();});
+}
+/* ===== END QUARTER FINAL SAVE FUNCTION ===== */
 
 function updateKO(s1H, s1A, s2H, s2A) {
     data.ko.s1 = { dt: document.getElementById('ks1dt').value, tm: document.getElementById('ks1tm').value, pt: document.getElementById('ks1pt').value, res: document.getElementById('ks1rs').value };
@@ -440,7 +568,7 @@ function removeFromGroup(g, i) { data.groups[g].splice(i,1); db.collection("kesa
 function assign() { const t = document.getElementById('selT').value, g = document.getElementById('selG').value; if(!data.groups[g].includes(t)) { data.groups[g].push(t); db.collection("kesale").doc("live").set(data).then(() => notify()); } }
 function addScorer() { const n = document.getElementById('scN').value, t = document.getElementById('scT').value, g = parseInt(document.getElementById('scG').value); if(!n || isNaN(g)) return; let s = data.scorers.find(x=>x.n===n); if(s) s.g+=g; else data.scorers.push({n,t,g}); db.collection("kesale").doc("live").set(data).then(()=>notify()); }
 function addGK() { const n = document.getElementById('scN').value, t = document.getElementById('scT').value; if(!n) return; let g = data.gks.find(x=>x.n===n); if(g) g.c++; else data.gks.push({n,t,c:1}); db.collection("kesale").doc("live").set(data).then(()=>notify()); }
-function wipe() { if(confirm("PERMANENTLY WIPE EVERYTHING?")) { data = { teams: [], groups: {}, fixtures: [], results: {}, scorers: [], gks: [], ko: { s1: {}, s2: {}, f: {} }, posts: [] }; liveEngine = { matches: {} }; db.collection("kesale").doc("live").set(data); db.collection("kesale").doc("live_engine").set(liveEngine).then(()=>location.reload()); } }
+function wipe() { if(confirm("PERMANENTLY WIPE EVERYTHING?")) { data = { teams: [], groups: {}, fixtures: [], results: {}, scorers: [], gks: [], ko: { qf1: {}, qf2: {}, qf3: {}, qf4: {}, s1: {}, s2: {}, f: {} }, posts: [] }; liveEngine = { matches: {} }; db.collection("kesale").doc("live").set(data); db.collection("kesale").doc("live_engine").set(liveEngine).then(()=>location.reload()); } }
 
 function genFixtures() {
     let groupMatches = {};
@@ -492,6 +620,230 @@ function genFixtures() {
     db.collection("kesale").doc("live").set(data).then(() => notify("All teams included and group-alternating fixtures generated!"));
 }
 
+
+/* =====================================================
+   NETBALL MODULE — fully self-contained, no football code touched
+   ===================================================== */
+
+function nbShowTab(tabId) {
+    ['nb-teams','nb-groups','nb-fixtures','nb-quarters','nb-semis','nb-final'].forEach(function(id) {
+        var el = document.getElementById(id);
+        var btn = document.getElementById('nb-btn-' + id.replace('nb-',''));
+        if(el) el.style.display = 'none';
+        if(btn) { btn.classList.remove('nb-tab-active'); }
+    });
+    var active = document.getElementById(tabId);
+    if(active) active.style.display = 'block';
+    var activeId = tabId.replace('nb-','');
+    var activeBtn = document.getElementById('nb-btn-' + activeId);
+    if(activeBtn) activeBtn.classList.add('nb-tab-active');
+}
+
+function nbGetStats(name) {
+    var mp=0,w=0,d=0,l=0,gf=0,ga=0;
+    (nbData.fixtures||[]).forEach(function(f,i) {
+        if(nbData.results[i] && (f.home===name||f.away===name)) {
+            var parts=nbData.results[i].split('-');
+            if(parts.length===2) {
+                var h=parseInt(parts[0]),a=parseInt(parts[1]); mp++;
+                if(f.home===name){gf+=h;ga+=a;if(h>a)w++;else if(h===a)d++;else l++;}
+                else{gf+=a;ga+=h;if(a>h)w++;else if(a===h)d++;else l++;}
+            }
+        }
+    });
+    var pts=(w*3)+d;
+    return {mp,w,d,l,gf,ga,gd:gf-ga,pts};
+}
+
+function nbRenderAll() {
+    if(!nbData.ko) nbData.ko={qf1:{},qf2:{},qf3:{},qf4:{},s1:{},s2:{},f:{}};
+    ['qf1','qf2','qf3','qf4','s1','s2','f'].forEach(function(k){if(!nbData.ko[k])nbData.ko[k]={};});
+
+    /* Teams */
+    var teamsEl = document.getElementById('nb-teams');
+    if(teamsEl) teamsEl.innerHTML = '<h2 style="color:#a855f7">Netball Clubs</h2>' +
+        (nbData.teams||[]).map(function(t){ return '<div class="card" style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600">'+t+'</span><span style="color:#a855f7;font-weight:800;">&rsaquo;</span></div>'; }).join('');
+
+    /* Standings */
+    var gHtml='';
+    Object.keys(nbData.groups||{}).sort().forEach(function(g){
+        var sorted=[...(nbData.groups[g]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd)||(nbGetStats(b).gf-nbGetStats(a).gf);});
+        gHtml+='<div class="card"><h3>Group '+g+'</h3><table><tr><th>Pos</th><th style="text-align:left">Team</th><th>MP</th><th>W</th><th>D</th><th>L</th><th>GF</th><th>GA</th><th>GD</th><th>Pts</th></tr>';
+        sorted.forEach(function(t,i){var s=nbGetStats(t);gHtml+='<tr><td>'+(i+1)+'</td><td style="text-align:left;font-weight:bold;color:white">'+t+'</td><td>'+s.mp+'</td><td>'+s.w+'</td><td>'+s.d+'</td><td>'+s.l+'</td><td>'+s.gf+'</td><td>'+s.ga+'</td><td>'+s.gd+'</td><td><b style="color:var(--gold)">'+s.pts+'</b></td></tr>';});
+        gHtml+='</table></div>';
+    });
+    var grpsEl=document.getElementById('nb-groups');
+    if(grpsEl) grpsEl.innerHTML = gHtml || '<div class="card"><p style="text-align:center;color:#64748b">No groups yet.</p></div>';
+
+    /* Fixtures */
+    var fixEl=document.getElementById('nb-fixtures');
+    if(fixEl) fixEl.innerHTML = '<h2>Netball Schedule</h2>' +
+        (nbData.fixtures||[]).map(function(f,i){
+            return '<div class="card"><div class="fixture-info-bar"><span>GRP '+f.group+' \u2022 '+(f.date||'TBA')+' \u2022 '+(f.time||'--:--')+'</span><span>'+(f.pitch||'Court')+'</span></div><div class="fixture-box"><span class="fixture-team" style="text-align:right">'+f.home+'</span><span class="fixture-score-box">'+(nbData.results[i]||'VS')+'</span><span class="fixture-team" style="text-align:left">'+f.away+'</span></div></div>';
+        }).join('') || '<div class="card"><p style="text-align:center;color:#64748b">No fixtures yet.</p></div>';
+
+    /* Quarter Final logic */
+    var grps=Object.keys(nbData.groups||{}).sort();
+    var nbHas5 = grps.length>=2 && (nbData.groups[grps[0]]||[]).length===5 && (nbData.groups[grps[1]]||[]).length===5;
+    var qfBtn=document.getElementById('nb-btn-quarters');
+    if(qfBtn) qfBtn.style.display = nbHas5 ? 'inline-block' : 'none';
+
+    var nb_s1H='1st A',nb_s1A='2nd B',nb_s2H='1st B',nb_s2A='2nd A';
+    if(grps.length>=2){
+        nb_s1H=[...(nbData.groups[grps[0]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);})[0]||'1st A';
+        nb_s1A=[...(nbData.groups[grps[1]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);})[1]||'2nd B';
+        nb_s2H=[...(nbData.groups[grps[1]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);})[0]||'1st B';
+        nb_s2A=[...(nbData.groups[grps[0]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);})[1]||'2nd A';
+    }
+
+    var nbQfEl=document.getElementById('nb-quarters');
+    if(nbHas5) {
+        var nbSA=[...(nbData.groups[grps[0]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);});
+        var nbSB=[...(nbData.groups[grps[1]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);});
+        var nbQfList=[
+            {h:nbSA[0]||'1st A',a:nbSB[2]||'3rd B',ko:nbData.ko.qf1,lbl:'QF 1'},
+            {h:nbSA[1]||'2nd A',a:nbSB[3]||'4th B',ko:nbData.ko.qf2,lbl:'QF 2'},
+            {h:nbSB[0]||'1st B',a:nbSA[2]||'3rd A',ko:nbData.ko.qf3,lbl:'QF 3'},
+            {h:nbSB[1]||'2nd B',a:nbSA[3]||'4th A',ko:nbData.ko.qf4,lbl:'QF 4'}
+        ];
+        var nbQfWin=function(ko,h,a){if(ko.win)return ko.win;if(ko.res&&ko.res.includes('-')){var p=ko.res.split('-');return parseInt(p[0])>parseInt(p[1])?h:a;}return null;};
+        var nbWins=nbQfList.map(function(q){return nbQfWin(q.ko,q.h,q.a);});
+        if(nbQfEl) nbQfEl.innerHTML='<h2 style="color:#a855f7">Quarter Finals</h2>'+nbQfList.map(function(q){
+            return '<div class="card"><div style="font-size:10px;font-weight:700;color:#a855f7;text-align:center;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">'+q.lbl+'</div><div style="font-size:11px;text-align:center;color:#94a3b8;margin-bottom:10px;">'+(q.ko.dt||'')+' \u2022 '+(q.ko.tm||'')+' \u2022 <span style="color:#a855f7">'+(q.ko.pt||'TBA')+'</span></div><div class="fixture-box"><span class="fixture-team" style="text-align:right">'+q.h+'</span><span class="fixture-score-box" style="border-color:#a855f7">'+(q.ko.res||'VS')+'</span><span class="fixture-team" style="text-align:left">'+q.a+'</span></div></div>';
+        }).join('');
+        nb_s1H=nbWins[0]||'QF1 Winner'; nb_s1A=nbWins[1]||'QF2 Winner';
+        nb_s2H=nbWins[2]||'QF3 Winner'; nb_s2A=nbWins[3]||'QF4 Winner';
+    } else {
+        if(nbQfEl) nbQfEl.innerHTML='';
+    }
+
+    /* Semis */
+    var nbSemisEl=document.getElementById('nb-semis');
+    if(nbSemisEl) nbSemisEl.innerHTML='<h2 style="color:#a855f7">Semi-Finals</h2>'
+        +'<div class="card"><div style="font-size:11px;text-align:center;color:#94a3b8;margin-bottom:10px;">'+(nbData.ko.s1.dt||'')+' \u2022 '+(nbData.ko.s1.tm||'')+' \u2022 <span style="color:#a855f7">'+(nbData.ko.s1.pt||'TBA')+'</span></div><div class="fixture-box"><span class="fixture-team" style="text-align:right">'+nb_s1H+'</span><span class="fixture-score-box" style="border-color:#a855f7">'+(nbData.ko.s1.res||'VS')+'</span><span class="fixture-team" style="text-align:left">'+nb_s1A+'</span></div></div>'
+        +'<div class="card"><div style="font-size:11px;text-align:center;color:#94a3b8;margin-bottom:10px;">'+(nbData.ko.s2.dt||'')+' \u2022 '+(nbData.ko.s2.tm||'')+' \u2022 <span style="color:#a855f7">'+(nbData.ko.s2.pt||'TBA')+'</span></div><div class="fixture-box"><span class="fixture-team" style="text-align:right">'+nb_s2H+'</span><span class="fixture-score-box" style="border-color:#a855f7">'+(nbData.ko.s2.res||'VS')+'</span><span class="fixture-team" style="text-align:left">'+nb_s2A+'</span></div></div>';
+
+    /* Final */
+    var nbFinalEl=document.getElementById('nb-final');
+    if(nbFinalEl) nbFinalEl.innerHTML='<h2 style="color:#a855f7">Grand Final</h2>'
+        +'<div class="card" style="text-align:center;border:1px solid #a855f7;"><div style="font-size:11px;color:#94a3b8;margin-bottom:10px;">'+(nbData.ko.f.dt||'')+' \u2022 '+(nbData.ko.f.tm||'')+' \u2022 <span style="color:#a855f7">'+(nbData.ko.f.pt||'TBA')+'</span></div><div class="fixture-box"><span class="fixture-team" style="text-align:right">'+(nbData.ko.s1.win||'SF1 Winner')+'</span><span class="fixture-score-box" style="border-color:#a855f7">'+(nbData.ko.f.res||'VS')+'</span><span class="fixture-team" style="text-align:left">'+(nbData.ko.s2.win||'SF2 Winner')+'</span></div><h1 style="color:#a855f7;margin-top:15px;">'+(nbData.ko.f.win||'???')+'</h1></div>';
+}
+
+function nbRenderAdmin() {
+    if(!nbData.ko) nbData.ko={qf1:{},qf2:{},qf3:{},qf4:{},s1:{},s2:{},f:{}};
+    ['qf1','qf2','qf3','qf4','s1','s2','f'].forEach(function(k){if(!nbData.ko[k])nbData.ko[k]={};});
+    var grps=Object.keys(nbData.groups||{}).sort();
+    var nb_s1H='1st A',nb_s1A='2nd B',nb_s2H='1st B',nb_s2A='2nd A';
+    if(grps.length>=2){
+        nb_s1H=[...(nbData.groups[grps[0]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);})[0]||'1st A';
+        nb_s1A=[...(nbData.groups[grps[1]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);})[1]||'2nd B';
+        nb_s2H=[...(nbData.groups[grps[1]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);})[0]||'1st B';
+        nb_s2A=[...(nbData.groups[grps[0]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);})[1]||'2nd A';
+    }
+    var nbHas5=grps.length>=2&&(nbData.groups[grps[0]]||[]).length===5&&(nbData.groups[grps[1]]||[]).length===5;
+
+    var nbAdminEl=document.getElementById('nbAdminPanel');
+    if(!nbAdminEl) return;
+
+    var qfAdminHtml='';
+    if(nbHas5){
+        var nbSA=[...(nbData.groups[grps[0]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);});
+        var nbSB=[...(nbData.groups[grps[1]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);});
+        var nbQfDefs=[
+            {id:'qf1',lbl:'QF1',h:nbSA[0]||'1st A',a:nbSB[2]||'3rd B',ko:nbData.ko.qf1},
+            {id:'qf2',lbl:'QF2',h:nbSA[1]||'2nd A',a:nbSB[3]||'4th B',ko:nbData.ko.qf2},
+            {id:'qf3',lbl:'QF3',h:nbSB[0]||'1st B',a:nbSA[2]||'3rd A',ko:nbData.ko.qf3},
+            {id:'qf4',lbl:'QF4',h:nbSB[1]||'2nd B',a:nbSA[3]||'4th A',ko:nbData.ko.qf4}
+        ];
+        qfAdminHtml='<div class="card" style="border:1.5px solid #a855f7"><h3 style="color:#a855f7">NB-5a. QUARTER FINALS</h3>'
+            +nbQfDefs.map(function(m){return '<b>'+m.lbl+': '+m.h+' vs '+m.a+'</b><div style="display:flex;gap:5px"><input id="nb_k'+m.id+'dt" class="admin-input" placeholder="Date" value="'+(m.ko.dt||'')+'"><input id="nb_k'+m.id+'tm" class="admin-input" placeholder="Time" value="'+(m.ko.tm||'')+'"><input id="nb_k'+m.id+'pt" class="admin-input" placeholder="Court" value="'+(m.ko.pt||'')+'"></div><input id="nb_k'+m.id+'rs" class="admin-input" placeholder="Score (e.g. 45-32)" value="'+(m.ko.res||'')+'">';}).join('')
+            +'<button onclick="nbSaveQF()" class="btn-save" style="background:#a855f7;color:white;font-weight:800;">Save Quarter Finals</button></div>';
+    }
+
+    nbAdminEl.innerHTML=
+        '<div class="card" style="border:1.5px solid #a855f7"><h3 style="color:#a855f7">NB-1. GROUPS & TEAMS</h3>'
+        +'<input id="nb_adG" placeholder="Group Letter" class="admin-input"><button onclick="nbAddGroup()" style="margin-bottom:10px;padding:8px 14px;border-radius:8px;border:1px solid #a855f7;background:transparent;color:#a855f7;cursor:pointer;font-weight:700;">+ Add Group</button>'
+        +'<input id="nb_adT" placeholder="Team Name" class="admin-input"><button onclick="nbAddTeam()" style="padding:8px 14px;border-radius:8px;border:1px solid #a855f7;background:transparent;color:#a855f7;cursor:pointer;font-weight:700;">+ Add Team</button>'
+        +'<div style="margin:15px 0">'+Object.keys(nbData.groups||{}).map(function(g){return '<b>Group '+g+':</b> '+(nbData.groups[g]||[]).map(function(t,i){return '<span>'+t+'<button class="tag-remove" onclick="nbRemoveFromGroup(\''+g+'\','+i+')">x</button></span>';}).join(', ')+'<br>';}).join('')+'</div>'
+        +'<select id="nb_selT" class="admin-input">'+(nbData.teams||[]).map(function(t){return '<option>'+t+'</option>';}).join('')+'</select>'
+        +'<select id="nb_selG" class="admin-input">'+Object.keys(nbData.groups||{}).map(function(g){return '<option>'+g+'</option>';}).join('')+'</select>'
+        +'<button onclick="nbAssign()" class="btn-save" style="background:#a855f7">Confirm Assignment</button></div>'
+        +'<div class="card" style="border:1px solid #a855f7"><h3 style="color:#a855f7">NB-2. FIXTURES</h3>'
+        +'<div style="max-height:400px;overflow-y:auto">'+(nbData.fixtures||[]).map(function(f,i){return '<div style="border-bottom:1px solid #334155;padding:10px 0"><b>'+f.home+' vs '+f.away+'</b><br><div style="display:flex;gap:5px"><input id="nb_dt'+i+'" value="'+(f.date||'')+'" placeholder="Date" class="admin-input"><input id="nb_tm'+i+'" value="'+(f.time||'')+'" placeholder="Time" class="admin-input"><input id="nb_pt'+i+'" value="'+(f.pitch||'')+'" placeholder="Court" class="admin-input"></div><input id="nb_rs'+i+'" value="'+(nbData.results[i]||'')+'" placeholder="Score (e.g. 45-32)" class="admin-input"><button onclick="nbUpdateF('+i+')" style="width:100%;padding:8px;">Save Match '+(i+1)+'</button></div>';}).join('')+'</div>'
+        +'<button onclick="nbGenFixtures()" class="btn-save" style="background:#a855f7">Generate Fixtures</button></div>'
+        +qfAdminHtml
+        +'<div class="card" style="border:1px solid #a855f7"><h3 style="color:#a855f7">NB-3. KNOCKOUTS</h3>'
+        +'<b>SF1: '+nb_s1H+' vs '+nb_s1A+'</b><div style="display:flex;gap:5px"><input id="nb_ks1dt" class="admin-input" placeholder="Date" value="'+(nbData.ko.s1.dt||'')+'"><input id="nb_ks1tm" class="admin-input" placeholder="Time" value="'+(nbData.ko.s1.tm||'')+'"><input id="nb_ks1pt" class="admin-input" placeholder="Court" value="'+(nbData.ko.s1.pt||'')+'"></div><input id="nb_ks1rs" class="admin-input" placeholder="Score" value="'+(nbData.ko.s1.res||'')+'">'
+        +'<b>SF2: '+nb_s2H+' vs '+nb_s2A+'</b><div style="display:flex;gap:5px"><input id="nb_ks2dt" class="admin-input" placeholder="Date" value="'+(nbData.ko.s2.dt||'')+'"><input id="nb_ks2tm" class="admin-input" placeholder="Time" value="'+(nbData.ko.s2.tm||'')+'"><input id="nb_ks2pt" class="admin-input" placeholder="Court" value="'+(nbData.ko.s2.pt||'')+'"></div><input id="nb_ks2rs" class="admin-input" placeholder="Score" value="'+(nbData.ko.s2.res||'')+'">'
+        +'<b>FINAL</b><div style="display:flex;gap:5px"><input id="nb_kfdt" class="admin-input" placeholder="Date" value="'+(nbData.ko.f.dt||'')+'"><input id="nb_kftm" class="admin-input" placeholder="Time" value="'+(nbData.ko.f.tm||'')+'"><input id="nb_kfpt" class="admin-input" placeholder="Court" value="'+(nbData.ko.f.pt||'')+'"></div><input id="nb_kfrs" class="admin-input" placeholder="Score" value="'+(nbData.ko.f.res||'')+'">'
+        +'<button onclick="nbUpdateKO(\''+nb_s1H+'\',\''+nb_s1A+'\',\''+nb_s2H+'\',\''+nb_s2A+'\')" class="btn-save" style="background:#a855f7">Save Knockouts</button></div>'
+        +'<button onclick="nbWipe()" class="btn-save" style="background:var(--danger)">WIPE NETBALL DATA</button>';
+}
+
+function nbAddGroup() { var g=document.getElementById('nb_adG').value.toUpperCase(); if(g&&!nbData.groups[g]){if(!nbData.groups)nbData.groups={};nbData.groups[g]=[];db.collection('kesale').doc('netball').set(nbData).then(function(){nbRenderAdmin();});} }
+function nbAddTeam() { var t=document.getElementById('nb_adT').value; if(t&&!(nbData.teams||[]).includes(t)){if(!nbData.teams)nbData.teams=[];nbData.teams.push(t);db.collection('kesale').doc('netball').set(nbData).then(function(){nbRenderAdmin();});} }
+function nbRemoveFromGroup(g,i) { nbData.groups[g].splice(i,1); db.collection('kesale').doc('netball').set(nbData).then(function(){nbRenderAdmin();}); }
+function nbAssign() { var t=document.getElementById('nb_selT').value,g=document.getElementById('nb_selG').value; if(!(nbData.groups[g]||[]).includes(t)){if(!nbData.groups[g])nbData.groups[g]=[];nbData.groups[g].push(t);db.collection('kesale').doc('netball').set(nbData).then(function(){notify();});} }
+function nbUpdateF(i) { nbData.fixtures[i].date=document.getElementById('nb_dt'+i).value; nbData.fixtures[i].time=document.getElementById('nb_tm'+i).value; nbData.fixtures[i].pitch=document.getElementById('nb_pt'+i).value; nbData.results[i]=document.getElementById('nb_rs'+i).value; db.collection('kesale').doc('netball').set(nbData).then(function(){notify();}); }
+
+function nbGenFixtures() {
+    var groupMatches={};
+    var gKeys=Object.keys(nbData.groups||{}).sort();
+    gKeys.forEach(function(g){
+        var teams=[...(nbData.groups[g]||[])];
+        if(teams.length<2)return;
+        var matches=[],n=teams.length;
+        if(n%2!==0){teams.push('BYE_DUMMY');n++;}
+        var rounds=n-1,half=n/2;
+        for(var r=0;r<rounds;r++){
+            for(var i=0;i<half;i++){
+                var home=teams[i],away=teams[n-1-i];
+                if(home!=='BYE_DUMMY'&&away!=='BYE_DUMMY') matches.push({group:g,home:home,away:away});
+            }
+            teams.splice(1,0,teams.pop());
+        }
+        groupMatches[g]=matches;
+    });
+    var interleaved=[],maxM=Math.max.apply(null,Object.values(groupMatches).map(function(m){return m.length;}).concat([0]));
+    for(var i=0;i<maxM;i++){gKeys.forEach(function(g){if(groupMatches[g]&&groupMatches[g][i])interleaved.push(groupMatches[g][i]);});}
+    nbData.fixtures=interleaved; nbData.results={};
+    db.collection('kesale').doc('netball').set(nbData).then(function(){notify('Netball fixtures generated!');});
+}
+
+function nbSaveQF() {
+    if(!nbData.ko)nbData.ko={qf1:{},qf2:{},qf3:{},qf4:{},s1:{},s2:{},f:{}};
+    ['qf1','qf2','qf3','qf4'].forEach(function(k){if(!nbData.ko[k])nbData.ko[k]={};});
+    var grps=Object.keys(nbData.groups||{}).sort();
+    if(grps.length<2)return;
+    var nbSA=[...(nbData.groups[grps[0]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);});
+    var nbSB=[...(nbData.groups[grps[1]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);});
+    var defs=[{id:'qf1',h:nbSA[0]||'1st A',a:nbSB[2]||'3rd B'},{id:'qf2',h:nbSA[1]||'2nd A',a:nbSB[3]||'4th B'},{id:'qf3',h:nbSB[0]||'1st B',a:nbSA[2]||'3rd A'},{id:'qf4',h:nbSB[1]||'2nd B',a:nbSA[3]||'4th A'}];
+    var qfW=function(res,h,a){if(res&&res.includes('-')){var p=res.split('-');return parseInt(p[0])>parseInt(p[1])?h:a;}return null;};
+    defs.forEach(function(q){
+        var dt=document.getElementById('nb_k'+q.id+'dt'),tm=document.getElementById('nb_k'+q.id+'tm'),pt=document.getElementById('nb_k'+q.id+'pt'),rs=document.getElementById('nb_k'+q.id+'rs');
+        if(!dt)return;
+        nbData.ko[q.id]={dt:dt.value,tm:tm.value,pt:pt.value,res:rs.value,win:qfW(rs.value,q.h,q.a)};
+    });
+    db.collection('kesale').doc('netball').set(nbData).then(function(){notify();});
+}
+
+function nbUpdateKO(s1H,s1A,s2H,s2A) {
+    if(!nbData.ko)nbData.ko={qf1:{},qf2:{},qf3:{},qf4:{},s1:{},s2:{},f:{}};
+    nbData.ko.s1={dt:document.getElementById('nb_ks1dt').value,tm:document.getElementById('nb_ks1tm').value,pt:document.getElementById('nb_ks1pt').value,res:document.getElementById('nb_ks1rs').value};
+    nbData.ko.s2={dt:document.getElementById('nb_ks2dt').value,tm:document.getElementById('nb_ks2tm').value,pt:document.getElementById('nb_ks2pt').value,res:document.getElementById('nb_ks2rs').value};
+    nbData.ko.f={dt:document.getElementById('nb_kfdt').value,tm:document.getElementById('nb_kftm').value,pt:document.getElementById('nb_kfpt').value,res:document.getElementById('nb_kfrs').value};
+    var qfW=function(res,h,a){if(res&&res.includes('-')){var p=res.split('-');return parseInt(p[0])>parseInt(p[1])?h:a;}return null;};
+    if(nbData.ko.s1.res.includes('-'))nbData.ko.s1.win=qfW(nbData.ko.s1.res,s1H,s1A);
+    if(nbData.ko.s2.res.includes('-'))nbData.ko.s2.win=qfW(nbData.ko.s2.res,s2H,s2A);
+    if(nbData.ko.f.res.includes('-')){var p=nbData.ko.f.res.split('-');nbData.ko.f.win=parseInt(p[0])>parseInt(p[1])?nbData.ko.s1.win:nbData.ko.s2.win;}
+    db.collection('kesale').doc('netball').set(nbData).then(function(){notify();});
+}
+
+function nbWipe() { if(confirm('PERMANENTLY WIPE ALL NETBALL DATA?')){nbData={teams:[],groups:{},fixtures:[],results:{},ko:{qf1:{},qf2:{},qf3:{},qf4:{},s1:{},s2:{},f:{}}};db.collection('kesale').doc('netball').set(nbData).then(function(){nbRenderAll();nbRenderAdmin();notify('Netball data wiped.');});} }
+
+/* =====================================================
+   END NETBALL MODULE
+   ===================================================== */
 window.onload = load;
 </script>
 </body>
