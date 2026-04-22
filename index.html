@@ -95,7 +95,7 @@
 <div id="toast">Success! Data Updated.</div>
 
 <div class="hero">
-    <h1 onclick="showSec('admin', document.getElementById('btnUpdates'))">KESALE CUP 2026</h1>
+    <h1>KESALE CUP 2026</h1>
     <div style="color: white; font-weight: 600; letter-spacing: 2px; margin-top: -5px; opacity: 1;">MZUMBE UNIVERSITY</div>
     <p>Prestigious tournament by Dr. Anosisye Kesale fostering talent and unity. The winning team is awarded a cow.</p>
 </div>
@@ -111,6 +111,7 @@
     <button onclick="showSec('leaderboard', this)">LEADERBOARD</button>
     <button onclick="showSec('updates', this)" id="btnUpdates">UPDATES</button>
     <button onclick="showSec('netball', this)" style="color:#a855f7; border-color:#a855f7; font-weight:800;">🏐 NETBALL</button>
+    <button onclick="showSec('registered-players', this)" style="color:#10b981; border-color:#10b981; font-weight:800;">👥 REGISTERED PLAYERS</button>
 </nav>
 
 <section id="teams" class="active"></section>
@@ -145,6 +146,20 @@
 </section>
 <!-- ===== END NETBALL SECTION ===== -->
 
+<!-- ===== REGISTERED PLAYERS SECTION ===== -->
+<section id="registered-players">
+    <h2 style="color:#10b981;">👥 Registered Players</h2>
+    <p style="text-align:center; color:#94a3b8; margin-bottom:25px;">Choose a team below to see all registered players for that team.</p>
+    <div id="regPlayerTeamList"></div>
+</section>
+<!-- ===== END REGISTERED PLAYERS SECTION ===== -->
+
+<!-- REGISTERED PLAYERS MODAL -->
+<div class="overlay" id="regOverlay" onclick="closeRegModal()" style="display:none;z-index:1500;"></div>
+<div id="regModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1e293b;padding:30px;border-radius:24px;z-index:1600;width:92%;max-width:520px;max-height:85vh;overflow-y:auto;border:1px solid rgba(255,255,255,0.15);box-shadow:0 25px 70px rgba(0,0,0,0.7);">
+    <div id="regModalContent"></div>
+</div>
+
 <section id="admin">
     <div id="loginBox" class="card" style="max-width: 400px; margin: auto;">
         <h3 style="text-align:center">Admin Control</h3>
@@ -157,7 +172,7 @@
     <div id="nbAdminPanel" style="display:none;margin-top:20px;border-top:2px solid #a855f7;padding-top:20px;"><h2 style="color:#a855f7;text-align:center;">🏐 NETBALL ADMIN</h2></div>
 </section>
 
-<div class="footer">All rights reserved, a product by Rished Kassimu</div>
+<div class="footer">All rights reserved, a product by <span id="rishedTrigger" onclick="showSec('admin', null)" style="color:#f97316; cursor:pointer; font-weight:700;">Rished Kassimu</span></div>
 <div class="overlay" id="overlay" onclick="closeModal()"></div>
 <div class="modal" id="teamModal"></div>
 
@@ -357,8 +372,8 @@ function renderAll() {
         document.getElementById('quarters').innerHTML = '<h2>Quarter Finals</h2>' + _qfList.map(function(q){
             return '<div class="card"><div style="font-size:10px;font-weight:700;color:var(--gold);text-align:center;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">'+q.lbl+'</div><div style="font-size:11px;text-align:center;color:#94a3b8;margin-bottom:10px;">'+(q.ko.dt||'')+' \u2022 '+(q.ko.tm||'')+' \u2022 <span style="color:var(--accent)">'+(q.ko.pt||'TBA')+'</span></div><div class="fixture-box"><span class="fixture-team" style="text-align:right">'+q.h+'</span><span class="fixture-score-box">'+(q.ko.res||'VS')+'</span><span class="fixture-team" style="text-align:left">'+q.a+'</span></div></div>';
         }).join('');
-        s1H = _qfWins[0]||'QF1 Winner'; s1A = _qfWins[1]||'QF2 Winner';
-        s2H = _qfWins[2]||'QF3 Winner'; s2A = _qfWins[3]||'QF4 Winner';
+        s1H = _qfWins[0]||'QF1 Winner'; s1A = _qfWins[2]||'QF3 Winner';
+        s2H = _qfWins[1]||'QF2 Winner'; s2A = _qfWins[3]||'QF4 Winner';
     } else {
         document.getElementById('quarters').innerHTML = '';
     }
@@ -389,6 +404,7 @@ function renderAll() {
 
     document.getElementById('leaderboard').innerHTML = `<div class="card"><h3>Golden Boot</h3>${data.scorers.sort((a,b)=>b.g-a.g).map(s=>`<div class="stat-row"><span>${s.n} (${s.t})</span><b style="color:var(--gold)">${s.g} G</b></div>`).join('')}</div><div class="card"><h3>Golden Glove</h3>${data.gks.sort((a,b)=>b.c-a.c).map(g=>`<div class="stat-row"><span>${g.n} (${g.t})</span><b style="color:var(--success)">${g.c} CS</b></div>`).join('')}</div>`;
     document.getElementById('updatesList').innerHTML = data.posts.map(p => `<div class="card"><small style="color:var(--accent)">${p.date}</small><h4>${p.title}</h4><p>${p.text}</p></div>`).join('');
+    renderRegPlayerSection();
 }
 
 function renderLive() {
@@ -480,11 +496,12 @@ function renderAdmin() {
         s2H = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[0] || '1st B';
         s2A = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[1] || '2nd A';
     }
-    let html = `<div class="card" style="border:1.5px solid var(--danger)"><h3 style="color:var(--danger)">1. LIVE MATCH ENGINE</h3><select id="liveMatchSelect" class="admin-input"><optgroup label="Groups">${data.fixtures.map((f,i)=>`<option value="${i}">${f.home} vs ${f.away}</option>`).join('')}</optgroup><optgroup label="Knockouts"><option value="ko-qf1">Quarter Final 1</option><option value="ko-qf2">Quarter Final 2</option><option value="ko-qf3">Quarter Final 3</option><option value="ko-qf4">Quarter Final 4</option><option value="ko-s1">Semi Final 1</option><option value="ko-s2">Semi Final 2</option><option value="ko-f">Grand Final</option></optgroup></select><button onclick="startLiveMatch()" class="btn-save" style="background:var(--danger)">Create Live Session</button><div id="liveAdminList">${Object.keys(liveEngine.matches).map(id => { const m = liveEngine.matches[id]; return `<div class="card" oninput="window.isAdminEditing=true" style="border-left:4px solid var(--accent); margin-top:15px"><div style="display:flex; justify-content:space-between"><b>${m.hName} vs ${m.aName}</b><button onclick="toggleLiveActive('${id}')" style="background:${m.active?'var(--danger)':'var(--success)'}; color:white; border:none; padding:4px 8px; border-radius:4px;">${m.active?'OFF':'GO LIVE'}</button></div><div style="text-align:center; margin:10px 0;"><button onclick="toggleLiveClock('${id}')" class="btn-save" style="padding:6px; margin:0; background:var(--accent); width:auto;">${m.running?'Stop Clock':'Start Clock'}</button><h2 id="clockDisplay-${id}">${formatLiveClock(m)}</h2></div><div class="admin-grid-live">${liveInput(id, 'hG', 'Home Score')}${liveInput(id, 'aG', 'Away Score')}<div class="admin-item-live"><label>Home Scorers</label><textarea id="hGoals-${id}">${m.hGoals}</textarea></div><div class="admin-item-live"><label>Away Scorers</label><textarea id="aGoals-${id}">${m.aGoals}</textarea></div>${liveInput(id, 'm', 'Current Min')}${liveInput(id, 's', 'Current Sec')}${liveInput(id, 'hP', 'H Poss%')}${liveInput(id, 'aP', 'A Poss%')}${liveInput(id, 'hSo', 'H S.On Target')}${liveInput(id, 'aSo', 'A S.On Target')}${liveInput(id, 'hSf', 'H S.Off Target')}${liveInput(id, 'aSf', 'A S.Off Target')}${liveInput(id, 'hOff', 'H Offsides')}${liveInput(id, 'aOff', 'A Offsides')}${liveInput(id, 'hC', 'H Corn')}${liveInput(id, 'aC', 'A Corn')}${liveInput(id, 'hF', 'H Foul')}${liveInput(id, 'aF', 'A Foul')}${liveInput(id, 'hY', 'H Yel')}${liveInput(id, 'aY', 'A Yel')}${liveInput(id, 'hR', 'H Red')}${liveInput(id, 'aR', 'A Red')}<div class="admin-item-live"><label>Extra Time (+)</label><input type="number" id="extra-${id}" value="${m.extra}"></div><div class="admin-item-live"><label>Period</label><select id="status-${id}" onchange="autoTime('${id}', this.value)" style="width:100%; background:var(--modal-bg); color:white; border:none;"><option value="1H" ${m.status==='1H'?'selected':''}>1st Half</option><option value="HT" ${m.status==='HT'?'selected':''}>Half Time</option><option value="2H" ${m.status==='2H'?'selected':''}>2nd Half</option><option value="ET1" ${m.status==='ET1'?'selected':''}>Ex.Time 1</option><option value="ET2" ${m.status==='ET2'?'selected':''}>Ex.Time 2</option><option value="PEN" ${m.status==='PEN'?'selected':''}>Penalties</option><option value="FT" ${m.status==='FT'?'selected':''}>Full Time</option></select></div></div><button onclick="pushLiveUpdate('${id}')" class="btn-save">PUSH UPDATE</button><button onclick="deleteLiveMatch('${id}')" style="background:transparent; color:var(--danger); border:none; width:100%; margin-top:10px;">Remove Control</button></div>`; }).join('')}</div></div><div class="card"><h3>2. NEWS POST</h3><input id="upTitle" placeholder="Title" class="admin-input"><textarea id="upText" placeholder="Content" class="admin-input"></textarea><button onclick="addPost()" class="btn-save">Post News</button></div><div class="card"><h3>3. GROUPS & TEAMS</h3><input id="adG" placeholder="Group Letter" class="admin-input"><button onclick="addGroup()" style="margin-bottom:10px">+ Add Group</button><input id="adT" placeholder="Team Name" class="admin-input"><button onclick="addTeam()">+ Add Team</button><div style="margin:15px 0">${Object.keys(data.groups).map(g => `<b>Group ${g}:</b> ${data.groups[g].map((t,i)=>`<span>${t}<button class="tag-remove" onclick="removeFromGroup('${g}',${i})">x</button></span>`).join(', ')}<br>`).join('')}</div><select id="selT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><select id="selG" class="admin-input">${Object.keys(data.groups).map(g=>`<option>${g}</option>`).join('')}</select><button onclick="assign()" class="btn-save">Confirm Assignment</button></div><div class="card"><h3>4. MATCH RESULTS (Group Stage)</h3><div style="max-height:400px; overflow-y:auto">${data.fixtures.map((f,i)=> `<div style="border-bottom:1px solid #334155; padding:10px 0"><b>${f.home} vs ${f.away}</b><br><div style="display:flex; gap:5px"><input id="dt${i}" value="${f.date||''}" placeholder="Date" class="admin-input"><input id="tm${i}" value="${f.time||''}" placeholder="Time" class="admin-input"><input id="pt${i}" value="${f.pitch||''}" placeholder="Pitch" class="admin-input"></div><input id="rs${i}" value="${data.results[i]||''}" placeholder="Score (1-0)" class="admin-input"><button onclick="updateF(${i})" style="width:100%; padding:8px;">Save Match ${i+1}</button></div>`).join('')}</div><button onclick="genFixtures()" class="btn-save" style="background:var(--accent)">Regenerate Fixtures</button></div><div class="card" id="qfAdminCard" style="display:none;border:1.5px solid var(--gold)"><h3 style="color:var(--gold)">5a. QUARTER FINALS</h3><div id="qfAdminInner"></div><button onclick="saveQF()" class="btn-save" style="background:var(--gold);color:#020617;font-weight:800;">Save Quarter Finals</button></div><div class="card"><h3>5. KNOCKOUTS</h3><b>SF1: ${s1H} vs ${s1A}</b><div style="display:flex; gap:5px"><input id="ks1dt" class="admin-input" placeholder="Date" value="${data.ko.s1.dt||''}"><input id="ks1tm" class="admin-input" placeholder="Time" value="${data.ko.s1.tm||''}"><input id="ks1pt" class="admin-input" placeholder="Pitch" value="${data.ko.s1.pt||''}"></div><input id="ks1rs" class="admin-input" placeholder="Score" value="${data.ko.s1.res||''}"><b>SF2: ${s2H} vs ${s2A}</b><div style="display:flex; gap:5px"><input id="ks2dt" class="admin-input" placeholder="Date" value="${data.ko.s2.dt||''}"><input id="ks2tm" class="admin-input" placeholder="Time" value="${data.ko.s2.tm||''}"><input id="ks2pt" class="admin-input" placeholder="Pitch" value="${data.ko.s2.pt||''}"></div><input id="ks2rs" class="admin-input" placeholder="Score" value="${data.ko.s2.res||''}"><b>FINAL</b><div style="display:flex; gap:5px"><input id="kfdt" class="admin-input" placeholder="Date" value="${data.ko.f.dt||''}"><input id="kftm" class="admin-input" placeholder="Time" value="${data.ko.f.tm||''}"><input id="kfpt" class="admin-input" placeholder="Pitch" value="${data.ko.f.pt||''}"></div><input id="kfrs" class="admin-input" placeholder="Score" value="${data.ko.f.res||''}"> <button onclick="updateKO('${s1H}','${s1A}','${s2H}','${s2A}')" class="btn-save">Save Knockouts</button></div><div class="card"><h3>6. PLAYER STATS</h3><input id="scN" placeholder="Player Name" class="admin-input"><select id="scT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><input id="scG" placeholder="Quantity" class="admin-input" type="number"><button onclick="addScorer()">Add Goals</button><button onclick="addGK()" style="background:#475569">Add Clean Sheet</button></div><button onclick="wipe()" class="btn-save" style="background:var(--danger)">WIPE ALL DATA</button>`; document.getElementById('adminPanel').innerHTML = html;
+    let html = `<div class="card" style="border:1.5px solid var(--danger)"><h3 style="color:var(--danger)">1. LIVE MATCH ENGINE</h3><select id="liveMatchSelect" class="admin-input"><optgroup label="Groups">${data.fixtures.map((f,i)=>`<option value="${i}">${f.home} vs ${f.away}</option>`).join('')}</optgroup><optgroup label="Knockouts"><option value="ko-qf1">Quarter Final 1</option><option value="ko-qf2">Quarter Final 2</option><option value="ko-qf3">Quarter Final 3</option><option value="ko-qf4">Quarter Final 4</option><option value="ko-s1">Semi Final 1</option><option value="ko-s2">Semi Final 2</option><option value="ko-f">Grand Final</option></optgroup></select><button onclick="startLiveMatch()" class="btn-save" style="background:var(--danger)">Create Live Session</button><div id="liveAdminList">${Object.keys(liveEngine.matches).map(id => { const m = liveEngine.matches[id]; return `<div class="card" oninput="window.isAdminEditing=true" style="border-left:4px solid var(--accent); margin-top:15px"><div style="display:flex; justify-content:space-between"><b>${m.hName} vs ${m.aName}</b><button onclick="toggleLiveActive('${id}')" style="background:${m.active?'var(--danger)':'var(--success)'}; color:white; border:none; padding:4px 8px; border-radius:4px;">${m.active?'OFF':'GO LIVE'}</button></div><div style="text-align:center; margin:10px 0;"><button onclick="toggleLiveClock('${id}')" class="btn-save" style="padding:6px; margin:0; background:var(--accent); width:auto;">${m.running?'Stop Clock':'Start Clock'}</button><h2 id="clockDisplay-${id}">${formatLiveClock(m)}</h2></div><div class="admin-grid-live">${liveInput(id, 'hG', 'Home Score')}${liveInput(id, 'aG', 'Away Score')}<div class="admin-item-live"><label>Home Scorers</label><textarea id="hGoals-${id}">${m.hGoals}</textarea></div><div class="admin-item-live"><label>Away Scorers</label><textarea id="aGoals-${id}">${m.aGoals}</textarea></div>${liveInput(id, 'm', 'Current Min')}${liveInput(id, 's', 'Current Sec')}${liveInput(id, 'hP', 'H Poss%')}${liveInput(id, 'aP', 'A Poss%')}${liveInput(id, 'hSo', 'H S.On Target')}${liveInput(id, 'aSo', 'A S.On Target')}${liveInput(id, 'hSf', 'H S.Off Target')}${liveInput(id, 'aSf', 'A S.Off Target')}${liveInput(id, 'hOff', 'H Offsides')}${liveInput(id, 'aOff', 'A Offsides')}${liveInput(id, 'hC', 'H Corn')}${liveInput(id, 'aC', 'A Corn')}${liveInput(id, 'hF', 'H Foul')}${liveInput(id, 'aF', 'A Foul')}${liveInput(id, 'hY', 'H Yel')}${liveInput(id, 'aY', 'A Yel')}${liveInput(id, 'hR', 'H Red')}${liveInput(id, 'aR', 'A Red')}<div class="admin-item-live"><label>Extra Time (+)</label><input type="number" id="extra-${id}" value="${m.extra}"></div><div class="admin-item-live"><label>Period</label><select id="status-${id}" onchange="autoTime('${id}', this.value)" style="width:100%; background:var(--modal-bg); color:white; border:none;"><option value="1H" ${m.status==='1H'?'selected':''}>1st Half</option><option value="HT" ${m.status==='HT'?'selected':''}>Half Time</option><option value="2H" ${m.status==='2H'?'selected':''}>2nd Half</option><option value="ET1" ${m.status==='ET1'?'selected':''}>Ex.Time 1</option><option value="ET2" ${m.status==='ET2'?'selected':''}>Ex.Time 2</option><option value="PEN" ${m.status==='PEN'?'selected':''}>Penalties</option><option value="FT" ${m.status==='FT'?'selected':''}>Full Time</option></select></div></div><button onclick="pushLiveUpdate('${id}')" class="btn-save">PUSH UPDATE</button><button onclick="deleteLiveMatch('${id}')" style="background:transparent; color:var(--danger); border:none; width:100%; margin-top:10px;">Remove Control</button></div>`; }).join('')}</div></div><div class="card"><h3>2. NEWS POST</h3><input id="upTitle" placeholder="Title" class="admin-input"><textarea id="upText" placeholder="Content" class="admin-input"></textarea><button onclick="addPost()" class="btn-save">Post News</button></div><div class="card"><h3>3. GROUPS & TEAMS</h3><input id="adG" placeholder="Group Letter" class="admin-input"><button onclick="addGroup()" style="margin-bottom:10px">+ Add Group</button><input id="adT" placeholder="Team Name" class="admin-input"><button onclick="addTeam()">+ Add Team</button><div style="margin:15px 0">${Object.keys(data.groups).map(g => `<b>Group ${g}:</b> ${data.groups[g].map((t,i)=>`<span>${t}<button class="tag-remove" onclick="removeFromGroup('${g}',${i})">x</button></span>`).join(', ')}<br>`).join('')}</div><select id="selT" class="admin-input">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><select id="selG" class="admin-input">${Object.keys(data.groups).map(g=>`<option>${g}</option>`).join('')}</select><button onclick="assign()" class="btn-save">Confirm Assignment</button></div><div class="card"><h3>4. MATCH RESULTS (Group Stage)</h3><div style="max-height:400px; overflow-y:auto">${data.fixtures.map((f,i)=> `<div style="border-bottom:1px solid #334155; padding:10px 0"><b>${f.home} vs ${f.away}</b><br><div style="display:flex; gap:5px"><input id="dt${i}" value="${f.date||''}" placeholder="Date" class="admin-input"><input id="tm${i}" value="${f.time||''}" placeholder="Time" class="admin-input"><input id="pt${i}" value="${f.pitch||''}" placeholder="Pitch" class="admin-input"></div><input id="rs${i}" value="${data.results[i]||''}" placeholder="Score (1-0)" class="admin-input"><button onclick="updateF(${i})" style="width:100%; padding:8px;">Save Match ${i+1}</button></div>`).join('')}</div><button onclick="genFixtures()" class="btn-save" style="background:var(--accent)">Regenerate Fixtures</button></div><div class="card" id="qfAdminCard" style="display:none;border:1.5px solid var(--gold)"><h3 style="color:var(--gold)">5a. QUARTER FINALS</h3><div id="qfAdminInner"></div><button onclick="saveQF()" class="btn-save" style="background:var(--gold);color:#020617;font-weight:800;">Save Quarter Finals</button></div><div class="card"><h3>5. KNOCKOUTS</h3><b>SF1: ${s1H} vs ${s1A}</b><div style="display:flex; gap:5px"><input id="ks1dt" class="admin-input" placeholder="Date" value="${data.ko.s1.dt||''}"><input id="ks1tm" class="admin-input" placeholder="Time" value="${data.ko.s1.tm||''}"><input id="ks1pt" class="admin-input" placeholder="Pitch" value="${data.ko.s1.pt||''}"></div><input id="ks1rs" class="admin-input" placeholder="Score" value="${data.ko.s1.res||''}"><b>SF2: ${s2H} vs ${s2A}</b><div style="display:flex; gap:5px"><input id="ks2dt" class="admin-input" placeholder="Date" value="${data.ko.s2.dt||''}"><input id="ks2tm" class="admin-input" placeholder="Time" value="${data.ko.s2.tm||''}"><input id="ks2pt" class="admin-input" placeholder="Pitch" value="${data.ko.s2.pt||''}"></div><input id="ks2rs" class="admin-input" placeholder="Score" value="${data.ko.s2.res||''}"><b>FINAL</b><div style="display:flex; gap:5px"><input id="kfdt" class="admin-input" placeholder="Date" value="${data.ko.f.dt||''}"><input id="kftm" class="admin-input" placeholder="Time" value="${data.ko.f.tm||''}"><input id="kfpt" class="admin-input" placeholder="Pitch" value="${data.ko.f.pt||''}"></div><input id="kfrs" class="admin-input" placeholder="Score" value="${data.ko.f.res||''}"> <button onclick="updateKO('${s1H}','${s1A}','${s2H}','${s2A}')" class="btn-save">Save Knockouts</button></div><div class="card"><h3>6. PLAYER STATS</h3><p style="font-size:11px;color:#94a3b8;margin-bottom:5px;">Select a team first — the player list will populate automatically from registered players.</p><select id="scT" class="admin-input" onchange="populateStatPlayers()">${data.teams.map(t=>`<option>${t}</option>`).join('')}</select><select id="scN" class="admin-input"><option value="">— Select Player —</option></select><input id="scG" placeholder="Quantity" class="admin-input" type="number"><button onclick="addScorer()">Add Goals</button><button onclick="addGK()" style="background:#475569">Add Clean Sheet</button></div><button onclick="wipe()" class="btn-save" style="background:var(--danger)">WIPE ALL DATA</button><div class="card" style="border:1.5px solid #10b981;margin-top:20px"><h3 style="color:#10b981">7. REGISTERED PLAYERS CONTROL</h3><p style="font-size:12px;color:#94a3b8">Set a unique password for each team, then open/close registration windows. Once a team submits, registration locks unless you reopen it.</p><div id="regAdminTeamList">${data.teams.map(t=>{var rd=(data.regData&&data.regData[t])||{};return '<div style="border-bottom:1px solid #334155;padding:10px 0"><b>'+t+'</b><div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:5px"><input id="regpw_'+t.replace(/\s/g,'__')+'" placeholder="Team Password" class="admin-input" style="max-width:180px" value="'+(rd.password||'')+'"><button onclick="saveRegPw(\''+t+'\')" style="padding:8px 14px;background:#10b981;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;">Save PW</button><button onclick="toggleReg(\''+t+'\')" style="padding:8px 14px;background:'+(rd.open?'var(--danger)':'var(--accent)')+';color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;">'+(rd.open?'Close Reg':'Open Reg')+'</button><button onclick="clearRegPlayers(\''+t+'\')" style="padding:8px 14px;background:#475569;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:700;">Clear Players</button></div><small style="color:'+(rd.open?'#10b981':'#ef4444')+'">Status: '+(rd.open?'Open':'Closed')+(rd.submitted?' • Submitted':'')+'</small></div>';}).join('')}</div></div>`; document.getElementById('adminPanel').innerHTML = html;
     /* ===== QF ADMIN ADDITION ===== */
     var _qaGrps = Object.keys(data.groups).sort();
     var _qaHas5 = _qaGrps.length>=2 && (data.groups[_qaGrps[0]]||[]).length===5 && (data.groups[_qaGrps[1]]||[]).length===5;
     var _qaCard = document.getElementById('qfAdminCard');
+    populateStatPlayers();
     if(_qaCard) {
         _qaCard.style.display = _qaHas5 ? 'block' : 'none';
         if(_qaHas5) {
@@ -568,6 +585,22 @@ function removeFromGroup(g, i) { data.groups[g].splice(i,1); db.collection("kesa
 function assign() { const t = document.getElementById('selT').value, g = document.getElementById('selG').value; if(!data.groups[g].includes(t)) { data.groups[g].push(t); db.collection("kesale").doc("live").set(data).then(() => notify()); } }
 function addScorer() { const n = document.getElementById('scN').value, t = document.getElementById('scT').value, g = parseInt(document.getElementById('scG').value); if(!n || isNaN(g)) return; let s = data.scorers.find(x=>x.n===n); if(s) s.g+=g; else data.scorers.push({n,t,g}); db.collection("kesale").doc("live").set(data).then(()=>notify()); }
 function addGK() { const n = document.getElementById('scN').value, t = document.getElementById('scT').value; if(!n) return; let g = data.gks.find(x=>x.n===n); if(g) g.c++; else data.gks.push({n,t,c:1}); db.collection("kesale").doc("live").set(data).then(()=>notify()); }
+
+function populateStatPlayers() {
+    var tEl = document.getElementById('scT');
+    var nEl = document.getElementById('scN');
+    if(!tEl || !nEl) return;
+    var teamName = tEl.value;
+    var rd = (data.regData && data.regData[teamName]) || {};
+    var players = rd.players || [];
+    if(players.length > 0) {
+        nEl.innerHTML = '<option value="">— Select Player —</option>'
+            + players.map(function(p){ return '<option value="'+p.name+'">'+p.name+' ('+p.reg+')</option>'; }).join('');
+    } else {
+        // No registered players — allow typing fallback as a free-text input look
+        nEl.innerHTML = '<option value="">— No registered players for this team —</option>';
+    }
+}
 function wipe() { if(confirm("PERMANENTLY WIPE EVERYTHING?")) { data = { teams: [], groups: {}, fixtures: [], results: {}, scorers: [], gks: [], ko: { qf1: {}, qf2: {}, qf3: {}, qf4: {}, s1: {}, s2: {}, f: {} }, posts: [] }; liveEngine = { matches: {} }; db.collection("kesale").doc("live").set(data); db.collection("kesale").doc("live_engine").set(liveEngine).then(()=>location.reload()); } }
 
 function genFixtures() {
@@ -843,6 +876,204 @@ function nbWipe() { if(confirm('PERMANENTLY WIPE ALL NETBALL DATA?')){nbData={te
 
 /* =====================================================
    END NETBALL MODULE
+   ===================================================== */
+/* =====================================================
+   REGISTERED PLAYERS MODULE
+   ===================================================== */
+
+function renderRegPlayerSection() {
+    var el = document.getElementById('regPlayerTeamList');
+    if(!el) return;
+    if(!data.teams || data.teams.length === 0) {
+        el.innerHTML = '<div class="card" style="text-align:center;color:#64748b;">No teams have been added yet. Check back later.</div>';
+        return;
+    }
+    el.innerHTML = data.teams.map(function(t) {
+        var rd = (data.regData && data.regData[t]) || {};
+        var submitted = rd.submitted;
+        var open = rd.open;
+        var btnLabel = submitted ? 'View Registered Players' : (open ? '📝 Register Players' : '🔒 Registration Closed');
+        var btnColor = submitted ? '#10b981' : (open ? 'var(--accent)' : '#475569');
+        return '<div class="card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">'
+            + '<span style="font-weight:700;font-size:1rem;">'+t+'</span>'
+            + '<button onclick="openRegModal(\''+t+'\')" style="background:'+btnColor+';color:white;border:none;padding:10px 20px;border-radius:20px;cursor:pointer;font-weight:700;font-size:12px;">'+btnLabel+'</button>'
+            + '</div>';
+    }).join('');
+}
+
+function openRegModal(teamName) {
+    var rd = (data.regData && data.regData[teamName]) || {};
+    var submitted = rd.submitted;
+    var open = rd.open;
+    var content = '';
+
+    if(submitted) {
+        // Show registered players
+        var players = rd.players || [];
+        var leaders = rd.leaders || {};
+        content = '<h3 style="color:#10b981;text-align:center">'+teamName+' — Registered Players</h3>';
+        content += '<p style="color:#94a3b8;font-size:12px;text-align:center;">'+players.length+' players registered</p>';
+        content += '<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:20px"><tr><th style="color:#94a3b8;padding:8px;border-bottom:1px solid #334155">#</th><th style="color:#94a3b8;padding:8px;border-bottom:1px solid #334155;text-align:left">Player Name</th><th style="color:#94a3b8;padding:8px;border-bottom:1px solid #334155">Reg No.</th></tr>'
+            + players.map(function(p,i){return '<tr><td style="padding:7px;border-bottom:1px solid rgba(255,255,255,0.03);text-align:center;color:#64748b">'+(i+1)+'</td><td style="padding:7px;border-bottom:1px solid rgba(255,255,255,0.03);color:#e2e8f0">'+p.name+'</td><td style="padding:7px;border-bottom:1px solid rgba(255,255,255,0.03);text-align:center;color:#94a3b8">'+p.reg+'</td></tr>';}).join('')
+            + '</table>';
+        content += '<div class="card" style="background:rgba(16,185,129,0.08);border:1px solid #10b981;margin-bottom:15px"><h4 style="color:#10b981;margin:0 0 10px">Team Leadership</h4>'
+            + '<div style="font-size:13px;line-height:2"><b style="color:#94a3b8">Coach:</b> '+(leaders.coach||'—')+'<br><b style="color:#94a3b8">Team Manager:</b> '+(leaders.manager||'—')+'<br><b style="color:#94a3b8">Communication Officer:</b> '+(leaders.comms||'—')+'</div></div>';
+        content += '<button onclick="closeRegModal()" class="btn-save" style="background:rgba(255,255,255,0.1);">Close</button>';
+    } else if(!open) {
+        content = '<h3 style="text-align:center">'+teamName+'</h3>'
+            + '<div style="text-align:center;padding:10px 0 5px 0"><div style="font-size:3rem">🔒</div><p style="color:#64748b;margin-bottom:5px;">Registration for this team is currently closed.<br>Please contact the admin.</p></div>'
+            + '<div style="border-top:1px solid #334155;margin-top:10px;padding-top:15px">'
+            + '<p style="font-size:12px;color:#94a3b8;text-align:center;margin-bottom:10px;">Are you a team coach? Enter your WhatsApp number below and the admin will send you the password.</p>'
+            + '<div style="display:flex;gap:8px;align-items:center"><span style="color:#94a3b8;font-size:13px;white-space:nowrap">+255</span><input id="regWaInput" type="tel" placeholder="e.g. 712345678" class="admin-input" style="margin:0;flex:1"></div>'
+            + '<button onclick="sendRegPwRequest(\''+teamName+'\')" class="btn-save" style="background:var(--accent);margin-top:10px;">📲 Request Password via WhatsApp</button>'
+            + '<div id="regWaMsg" style="display:none;margin-top:10px;text-align:center;font-size:12px;color:#10b981;"></div>'
+            + '</div>'
+            + '<button onclick="closeRegModal()" style="background:transparent;color:#64748b;border:none;width:100%;margin-top:10px;cursor:pointer;">Close</button>';
+    } else {
+        // Show password entry form
+        content = '<h3 style="color:var(--accent);text-align:center">'+teamName+' — Register Players</h3>'
+            + '<p style="color:#94a3b8;font-size:12px;text-align:center;">Enter the team password to proceed with player registration.</p>'
+            + '<input id="regPwInput" type="password" placeholder="Enter team password" class="admin-input" style="margin:15px 0">'
+            + '<button onclick="verifyRegPw(\''+teamName+'\')" class="btn-save" style="background:var(--accent)">Unlock Registration</button>'
+            + '<div id="regFormArea" style="display:none;margin-top:20px">'
+                + '<p style="color:#f59e0b;font-size:12px;text-align:center;">⚠️ You can register exactly 25 players. Once submitted, this cannot be changed.</p>'
+                + '<h4 style="color:#e2e8f0;margin-bottom:10px">Players (25)</h4>'
+                + '<div id="regPlayerRows">'
+                + [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25].map(function(n){
+                    return '<div style="display:flex;gap:6px;margin-bottom:8px;align-items:center"><span style="color:#64748b;font-size:11px;width:22px">'+n+'.</span><input id="pname'+n+'" placeholder="Player Name" class="admin-input" style="flex:2"><input id="preg'+n+'" placeholder="Reg No." class="admin-input" style="flex:1"></div>';
+                }).join('')
+                + '</div>'
+                + '<h4 style="color:#10b981;margin:20px 0 10px">Team Leadership (separate from players)</h4>'
+                + '<div style="display:flex;flex-direction:column;gap:8px">'
+                + '<div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:3px">COACH</label><input id="regCoach" placeholder="Full Name" class="admin-input"></div>'
+                + '<div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:3px">TEAM MANAGER</label><input id="regManager" placeholder="Full Name" class="admin-input"></div>'
+                + '<div><label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:3px">COMMUNICATION OFFICER</label><input id="regComms" placeholder="Full Name" class="admin-input"></div>'
+                + '</div>'
+                + '<button onclick="submitRegPlayers(\''+teamName+'\')" class="btn-save" style="margin-top:20px;background:#10b981;">✅ Submit Registration</button>'
+            + '</div>'
+            + '<button onclick="closeRegModal()" style="background:transparent;color:#64748b;border:none;width:100%;margin-top:10px;cursor:pointer;">Cancel</button>';
+    }
+
+    document.getElementById('regModalContent').innerHTML = content;
+    document.getElementById('regModal').style.display = 'block';
+    document.getElementById('regOverlay').style.display = 'block';
+}
+
+function verifyRegPw(teamName) {
+    var rd = (data.regData && data.regData[teamName]) || {};
+    var entered = document.getElementById('regPwInput').value;
+    if(!entered) return alert('Please enter the password.');
+    if(entered !== rd.password) {
+        alert('Incorrect password. Please try again.');
+        document.getElementById('regPwInput').value = '';
+        return;
+    }
+    document.getElementById('regFormArea').style.display = 'block';
+    document.getElementById('regPwInput').parentNode.querySelector('button').style.display = 'none';
+    document.getElementById('regPwInput').style.display = 'none';
+}
+
+function submitRegPlayers(teamName) {
+    var players = [];
+    for(var n = 1; n <= 25; n++) {
+        var nameEl = document.getElementById('pname'+n);
+        var regEl = document.getElementById('preg'+n);
+        var pname = nameEl ? nameEl.value.trim() : '';
+        var preg = regEl ? regEl.value.trim() : '';
+        if(!pname || !preg) {
+            alert('Please fill in all 25 players with their name and registration number. Player '+n+' is incomplete.');
+            return;
+        }
+        players.push({ name: pname, reg: preg });
+    }
+    var coach = document.getElementById('regCoach').value.trim();
+    var manager = document.getElementById('regManager').value.trim();
+    var comms = document.getElementById('regComms').value.trim();
+    if(!coach || !manager || !comms) {
+        alert('Please fill in all three leadership positions (Coach, Team Manager, Communication Officer).');
+        return;
+    }
+    if(!confirm('Are you sure you want to submit? Once submitted, the registration cannot be changed.')) return;
+    if(!data.regData) data.regData = {};
+    data.regData[teamName] = {
+        password: (data.regData[teamName] && data.regData[teamName].password) || '',
+        open: false,
+        submitted: true,
+        players: players,
+        leaders: { coach: coach, manager: manager, comms: comms }
+    };
+    db.collection('kesale').doc('live').set(data).then(function() {
+        notify('Registration submitted successfully!');
+        closeRegModal();
+    });
+}
+
+function closeRegModal() {
+    document.getElementById('regModal').style.display = 'none';
+    document.getElementById('regOverlay').style.display = 'none';
+}
+
+function sendRegPwRequest(teamName) {
+    var waInput = document.getElementById('regWaInput');
+    if(!waInput) return;
+    var number = waInput.value.trim().replace(/\D/g,'');
+    if(!number || number.length < 8) { alert('Please enter a valid WhatsApp number.'); return; }
+    var rd = (data.regData && data.regData[teamName]) || {};
+    var pw = rd.password || '(not set yet)';
+    var adminNumber = '255688238063';
+    var userFullNumber = '255' + number.replace(/^0/,'');
+    var message = encodeURIComponent(
+        'KESALE CUP 2026 - Player Registration\n\n'
+        + 'Team: ' + teamName + '\n'
+        + 'Coach WhatsApp: +' + userFullNumber + '\n'
+        + 'Password: ' + pw + '\n\n'
+        + 'Use this password to register your players on the platform.'
+    );
+    var waUrl = 'https://wa.me/' + adminNumber + '?text=' + message;
+    // Show confirmation and open WhatsApp
+    var msgEl = document.getElementById('regWaMsg');
+    if(msgEl) {
+        msgEl.style.display = 'block';
+        msgEl.innerHTML = 'Opening WhatsApp to send your request to the admin...<br><small style="color:#94a3b8">If WhatsApp does not open, contact the admin directly: +' + adminNumber + '</small>';
+    }
+    waInput.disabled = true;
+    setTimeout(function(){ window.open(waUrl, '_blank'); }, 500);
+}
+
+/* Admin registration control functions */
+function saveRegPw(teamName) {
+    var key = 'regpw_' + teamName.replace(/\s/g, '__');
+    var pwEl = document.getElementById(key);
+    if(!pwEl) return;
+    var pw = pwEl.value.trim();
+    if(!pw) return alert('Please enter a password for '+teamName);
+    if(!data.regData) data.regData = {};
+    if(!data.regData[teamName]) data.regData[teamName] = {};
+    data.regData[teamName].password = pw;
+    db.collection('kesale').doc('live').set(data).then(function() { notify('Password saved for '+teamName); renderAdmin(); });
+}
+
+function toggleReg(teamName) {
+    if(!data.regData) data.regData = {};
+    if(!data.regData[teamName]) data.regData[teamName] = {};
+    if(!data.regData[teamName].password) return alert('Please set a password for '+teamName+' first.');
+    data.regData[teamName].open = !data.regData[teamName].open;
+    if(data.regData[teamName].open) data.regData[teamName].submitted = false; // admin reopening clears submitted lock
+    db.collection('kesale').doc('live').set(data).then(function() { notify('Registration '+(data.regData[teamName].open?'opened':'closed')+' for '+teamName); renderAdmin(); });
+}
+
+function clearRegPlayers(teamName) {
+    if(!confirm('Clear all registered players for '+teamName+'? This cannot be undone.')) return;
+    if(!data.regData) data.regData = {};
+    if(!data.regData[teamName]) data.regData[teamName] = {};
+    data.regData[teamName].players = [];
+    data.regData[teamName].leaders = {};
+    data.regData[teamName].submitted = false;
+    db.collection('kesale').doc('live').set(data).then(function() { notify('Players cleared for '+teamName); renderAdmin(); });
+}
+
+/* =====================================================
+   END REGISTERED PLAYERS MODULE
    ===================================================== */
 window.onload = load;
 </script>
