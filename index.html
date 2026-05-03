@@ -363,8 +363,8 @@ function renderAll() {
         var _sB = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd);
         var _qfList = [
             { h:_sA[0]||'1st A', a:_sB[3]||'4th B', ko:data.ko.qf1, lbl:'QF 1' },
-            { h:_sA[1]||'2nd A', a:_sB[2]||'3rd B', ko:data.ko.qf2, lbl:'QF 2' },
-            { h:_sB[0]||'1st B', a:_sA[3]||'4th A', ko:data.ko.qf3, lbl:'QF 3' },
+            { h:_sB[0]||'1st B', a:_sA[3]||'4th A', ko:data.ko.qf2, lbl:'QF 2' },
+            { h:_sA[1]||'2nd A', a:_sB[2]||'3rd B', ko:data.ko.qf3, lbl:'QF 3' },
             { h:_sB[1]||'2nd B', a:_sA[2]||'3rd A', ko:data.ko.qf4, lbl:'QF 4' }
         ];
         var _qfWin = function(ko,h,a){ if(ko.win) return ko.win; if(ko.res&&ko.res.includes('-')){var p=ko.res.split('-');return parseInt(p[0])>parseInt(p[1])?h:a;} return null; };
@@ -441,7 +441,7 @@ function startLiveMatch() {
         if (type.startsWith('qf')) {
             var _lSA=[...(data.groups[grps[0]]||[])].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd);
             var _lSB=[...(data.groups[grps[1]]||[])].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd);
-            var _lMap={qf1:[_lSA[0]||'1st A',_lSB[3]||'4th B'],qf2:[_lSA[1]||'2nd A',_lSB[2]||'3rd B'],qf3:[_lSB[0]||'1st B',_lSA[3]||'4th A'],qf4:[_lSB[1]||'2nd B',_lSA[2]||'3rd A']};
+            var _lMap={qf1:[_lSA[0]||'1st A',_lSB[3]||'4th B'],qf2:[_lSB[0]||'1st B',_lSA[3]||'4th A'],qf3:[_lSA[1]||'2nd A',_lSB[2]||'3rd B'],qf4:[_lSB[1]||'2nd B',_lSA[2]||'3rd A']};
             home=_lMap[type][0]; away=_lMap[type][1]; id=type.toUpperCase()+'-'+Date.now();
         /* ===== END QF LIVE ADDITION ===== */
         } else if (type === 's1') {
@@ -511,8 +511,8 @@ function renderAdmin() {
             var _qaSB=[...(data.groups[_qaGrps[1]]||[])].sort(function(a,b){return (getStats(b).pts-getStats(a).pts)||getStats(b).gd-getStats(a).gd;});
             var _qaM=[
                 {id:'qf1',lbl:'QF1',h:_qaSA[0]||'1st A',a:_qaSB[3]||'4th B',ko:data.ko.qf1},
-                {id:'qf2',lbl:'QF2',h:_qaSA[1]||'2nd A',a:_qaSB[2]||'3rd B',ko:data.ko.qf2},
-                {id:'qf3',lbl:'QF3',h:_qaSB[0]||'1st B',a:_qaSA[3]||'4th A',ko:data.ko.qf3},
+                {id:'qf2',lbl:'QF2',h:_qaSB[0]||'1st B',a:_qaSA[3]||'4th A',ko:data.ko.qf2},
+                {id:'qf3',lbl:'QF3',h:_qaSA[1]||'2nd A',a:_qaSB[2]||'3rd B',ko:data.ko.qf3},
                 {id:'qf4',lbl:'QF4',h:_qaSB[1]||'2nd B',a:_qaSA[2]||'3rd A',ko:data.ko.qf4}
             ];
             document.getElementById('qfAdminInner').innerHTML = _qaM.map(function(m){
@@ -547,8 +547,8 @@ function saveQF() {
     var _qaSB=[...(data.groups[_qaGrps[1]]||[])].sort(function(a,b){return (getStats(b).pts-getStats(a).pts)||getStats(b).gd-getStats(a).gd;});
     var _qfDefs=[
         {id:'qf1',h:_qaSA[0]||'1st A',a:_qaSB[3]||'4th B'},
-        {id:'qf2',h:_qaSA[1]||'2nd A',a:_qaSB[2]||'3rd B'},
-        {id:'qf3',h:_qaSB[0]||'1st B',a:_qaSA[3]||'4th A'},
+        {id:'qf2',h:_qaSB[0]||'1st B',a:_qaSA[3]||'4th A'},
+        {id:'qf3',h:_qaSA[1]||'2nd A',a:_qaSB[2]||'3rd B'},
         {id:'qf4',h:_qaSB[1]||'2nd B',a:_qaSA[2]||'3rd A'}
     ];
     var _qfW=function(res,h,a){if(res&&res.includes('-')){var p=res.split('-');return parseInt(p[0])>parseInt(p[1])?h:a;}return null;};
@@ -1170,7 +1170,12 @@ function saveRegPw(teamName) {
     if(!data.regData) data.regData = {};
     if(!data.regData[teamName]) data.regData[teamName] = {};
     data.regData[teamName].password = pw;
-    db.collection('kesale').doc('live').set(data).then(function() { notify('Password saved for '+teamName); renderAdmin(); });
+    var _pwPayload = {}; _pwPayload['regData.' + teamName + '.password'] = pw;
+    db.collection('kesale').doc('live').update(_pwPayload).then(function() {
+        notify('Password saved for '+teamName); renderAdmin();
+    }).catch(function() {
+        db.collection('kesale').doc('live').set(data, { merge: true }).then(function() { notify('Password saved for '+teamName); renderAdmin(); });
+    });
 }
 
 function toggleReg(teamName) {
@@ -1179,7 +1184,14 @@ function toggleReg(teamName) {
     if(!data.regData[teamName].password) return alert('Please set a password for '+teamName+' first.');
     data.regData[teamName].open = !data.regData[teamName].open;
     if(data.regData[teamName].open) data.regData[teamName].submitted = false; // admin reopening clears submitted lock
-    db.collection('kesale').doc('live').set(data).then(function() { notify('Registration '+(data.regData[teamName].open?'opened':'closed')+' for '+teamName); renderAdmin(); });
+    var _tgPayload = {};
+    _tgPayload['regData.' + teamName + '.open'] = data.regData[teamName].open;
+    _tgPayload['regData.' + teamName + '.submitted'] = data.regData[teamName].submitted;
+    db.collection('kesale').doc('live').update(_tgPayload).then(function() {
+        notify('Registration '+(data.regData[teamName].open?'opened':'closed')+' for '+teamName); renderAdmin();
+    }).catch(function() {
+        db.collection('kesale').doc('live').set(data, { merge: true }).then(function() { notify('Registration '+(data.regData[teamName].open?'opened':'closed')+' for '+teamName); renderAdmin(); });
+    });
 }
 
 function clearRegPlayers(teamName) {
@@ -1191,7 +1203,17 @@ function clearRegPlayers(teamName) {
     data.regData[teamName].captain1 = '';
     data.regData[teamName].captain2 = '';
     data.regData[teamName].submitted = false;
-    db.collection('kesale').doc('live').set(data).then(function() { notify('Players cleared for '+teamName); renderAdmin(); });
+    var _clPayload = {};
+    _clPayload['regData.' + teamName + '.players'] = [];
+    _clPayload['regData.' + teamName + '.leaders'] = {};
+    _clPayload['regData.' + teamName + '.captain1'] = '';
+    _clPayload['regData.' + teamName + '.captain2'] = '';
+    _clPayload['regData.' + teamName + '.submitted'] = false;
+    db.collection('kesale').doc('live').update(_clPayload).then(function() {
+        notify('Players cleared for '+teamName); renderAdmin();
+    }).catch(function() {
+        db.collection('kesale').doc('live').set(data, { merge: true }).then(function() { notify('Players cleared for '+teamName); renderAdmin(); });
+    });
 }
 
 function adminViewPlayers(teamName) {
@@ -1311,7 +1333,13 @@ function togglePublicView(teamName) {
     if(!data.regData[teamName]) data.regData[teamName] = {};
     data.regData[teamName].publicView = !data.regData[teamName].publicView;
     var state = data.regData[teamName].publicView ? 'enabled (public can view freely)' : 'disabled (password required)';
-    db.collection('kesale').doc('live').set(data).then(function() { notify('Public view '+state+' for '+teamName); renderAdmin(); });
+    var _pvPayload = {};
+    _pvPayload['regData.' + teamName + '.publicView'] = data.regData[teamName].publicView;
+    db.collection('kesale').doc('live').update(_pvPayload).then(function() {
+        notify('Public view '+state+' for '+teamName); renderAdmin();
+    }).catch(function() {
+        db.collection('kesale').doc('live').set(data, { merge: true }).then(function() { notify('Public view '+state+' for '+teamName); renderAdmin(); });
+    });
 }
 
 /* =====================================================
