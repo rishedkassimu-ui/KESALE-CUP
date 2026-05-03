@@ -359,8 +359,8 @@ function renderAll() {
     if(_qfActive) {
         if(!data.ko.qf1) data.ko.qf1={}; if(!data.ko.qf2) data.ko.qf2={};
         if(!data.ko.qf3) data.ko.qf3={}; if(!data.ko.qf4) data.ko.qf4={};
-        var _sA = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd);
-        var _sB = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd);
+        var _sA = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd||getStats(b).gf-getStats(a).gf);
+        var _sB = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd||getStats(b).gf-getStats(a).gf);
         var _qfList = [
             { h:_sA[0]||'1st A', a:_sB[3]||'4th B', ko:data.ko.qf1, lbl:'QF 1' },
             { h:_sB[0]||'1st B', a:_sA[3]||'4th A', ko:data.ko.qf2, lbl:'QF 2' },
@@ -439,8 +439,8 @@ function startLiveMatch() {
         const grps = Object.keys(data.groups).sort();
         /* ===== QF LIVE ADDITION ===== */
         if (type.startsWith('qf')) {
-            var _lSA=[...(data.groups[grps[0]]||[])].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd);
-            var _lSB=[...(data.groups[grps[1]]||[])].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd);
+            var _lSA=[...(data.groups[grps[0]]||[])].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd||getStats(b).gf-getStats(a).gf);
+            var _lSB=[...(data.groups[grps[1]]||[])].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd||getStats(b).gf-getStats(a).gf);
             var _lMap={qf1:[_lSA[0]||'1st A',_lSB[3]||'4th B'],qf2:[_lSB[0]||'1st B',_lSA[3]||'4th A'],qf3:[_lSA[1]||'2nd A',_lSB[2]||'3rd B'],qf4:[_lSB[1]||'2nd B',_lSA[2]||'3rd A']};
             home=_lMap[type][0]; away=_lMap[type][1]; id=type.toUpperCase()+'-'+Date.now();
         /* ===== END QF LIVE ADDITION ===== */
@@ -507,8 +507,8 @@ function renderAdmin() {
         if(_qaHas5) {
             if(!data.ko.qf1)data.ko.qf1={}; if(!data.ko.qf2)data.ko.qf2={};
             if(!data.ko.qf3)data.ko.qf3={}; if(!data.ko.qf4)data.ko.qf4={};
-            var _qaSA=[...(data.groups[_qaGrps[0]]||[])].sort(function(a,b){return (getStats(b).pts-getStats(a).pts)||getStats(b).gd-getStats(a).gd;});
-            var _qaSB=[...(data.groups[_qaGrps[1]]||[])].sort(function(a,b){return (getStats(b).pts-getStats(a).pts)||getStats(b).gd-getStats(a).gd;});
+            var _qaSA=[...(data.groups[_qaGrps[0]]||[])].sort(function(a,b){return (getStats(b).pts-getStats(a).pts)||getStats(b).gd-getStats(a).gd||getStats(b).gf-getStats(a).gf;});
+            var _qaSB=[...(data.groups[_qaGrps[1]]||[])].sort(function(a,b){return (getStats(b).pts-getStats(a).pts)||getStats(b).gd-getStats(a).gd||getStats(b).gf-getStats(a).gf;});
             var _qaM=[
                 {id:'qf1',lbl:'QF1',h:_qaSA[0]||'1st A',a:_qaSB[3]||'4th B',ko:data.ko.qf1},
                 {id:'qf2',lbl:'QF2',h:_qaSB[0]||'1st B',a:_qaSA[3]||'4th A',ko:data.ko.qf2},
@@ -543,8 +543,8 @@ function saveQF() {
     if(_qaGrps.length<2) return;
     if(!data.ko.qf1)data.ko.qf1={}; if(!data.ko.qf2)data.ko.qf2={};
     if(!data.ko.qf3)data.ko.qf3={}; if(!data.ko.qf4)data.ko.qf4={};
-    var _qaSA=[...(data.groups[_qaGrps[0]]||[])].sort(function(a,b){return (getStats(b).pts-getStats(a).pts)||getStats(b).gd-getStats(a).gd;});
-    var _qaSB=[...(data.groups[_qaGrps[1]]||[])].sort(function(a,b){return (getStats(b).pts-getStats(a).pts)||getStats(b).gd-getStats(a).gd;});
+    var _qaSA=[...(data.groups[_qaGrps[0]]||[])].sort(function(a,b){return (getStats(b).pts-getStats(a).pts)||getStats(b).gd-getStats(a).gd||getStats(b).gf-getStats(a).gf;});
+    var _qaSB=[...(data.groups[_qaGrps[1]]||[])].sort(function(a,b){return (getStats(b).pts-getStats(a).pts)||getStats(b).gd-getStats(a).gd||getStats(b).gf-getStats(a).gf;});
     var _qfDefs=[
         {id:'qf1',h:_qaSA[0]||'1st A',a:_qaSB[3]||'4th B'},
         {id:'qf2',h:_qaSB[0]||'1st B',a:_qaSA[3]||'4th A'},
@@ -735,8 +735,8 @@ function nbRenderAll() {
         var nbSB=[...(nbData.groups[grps[1]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);});
         var nbQfList=[
             {h:nbSA[0]||'1st A',a:nbSB[3]||'4th B',ko:nbData.ko.qf1,lbl:'QF 1'},
-            {h:nbSA[1]||'2nd A',a:nbSB[2]||'3rd B',ko:nbData.ko.qf2,lbl:'QF 2'},
-            {h:nbSB[0]||'1st B',a:nbSA[3]||'4th A',ko:nbData.ko.qf3,lbl:'QF 3'},
+            {h:nbSB[0]||'1st B',a:nbSA[3]||'4th A',ko:nbData.ko.qf2,lbl:'QF 2'},
+            {h:nbSA[1]||'2nd A',a:nbSB[2]||'3rd B',ko:nbData.ko.qf3,lbl:'QF 3'},
             {h:nbSB[1]||'2nd B',a:nbSA[2]||'3rd A',ko:nbData.ko.qf4,lbl:'QF 4'}
         ];
         var nbQfWin=function(ko,h,a){if(ko.win)return ko.win;if(ko.res&&ko.res.includes('-')){var p=ko.res.split('-');return parseInt(p[0])>parseInt(p[1])?h:a;}return null;};
@@ -744,8 +744,8 @@ function nbRenderAll() {
         if(nbQfEl) nbQfEl.innerHTML='<h2 style="color:#a855f7">Quarter Finals</h2>'+nbQfList.map(function(q){
             return '<div class="card"><div style="font-size:10px;font-weight:700;color:#a855f7;text-align:center;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;">'+q.lbl+'</div><div style="font-size:11px;text-align:center;color:#94a3b8;margin-bottom:10px;">'+(q.ko.dt||'')+' \u2022 '+(q.ko.tm||'')+' \u2022 <span style="color:#a855f7">'+(q.ko.pt||'TBA')+'</span></div><div class="fixture-box"><span class="fixture-team" style="text-align:right">'+q.h+'</span><span class="fixture-score-box" style="border-color:#a855f7">'+(q.ko.res||'VS')+'</span><span class="fixture-team" style="text-align:left">'+q.a+'</span></div></div>';
         }).join('');
-        nb_s1H=nbWins[0]||'QF1 Winner'; nb_s1A=nbWins[1]||'QF2 Winner';
-        nb_s2H=nbWins[2]||'QF3 Winner'; nb_s2A=nbWins[3]||'QF4 Winner';
+        nb_s1H=nbWins[0]||'QF1 Winner'; nb_s1A=nbWins[2]||'QF3 Winner';
+        nb_s2H=nbWins[1]||'QF2 Winner'; nb_s2A=nbWins[3]||'QF4 Winner';
     } else {
         if(nbQfEl) nbQfEl.innerHTML='';
     }
@@ -784,8 +784,8 @@ function nbRenderAdmin() {
         var nbSB=[...(nbData.groups[grps[1]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);});
         var nbQfDefs=[
             {id:'qf1',lbl:'QF1',h:nbSA[0]||'1st A',a:nbSB[3]||'4th B',ko:nbData.ko.qf1},
-            {id:'qf2',lbl:'QF2',h:nbSA[1]||'2nd A',a:nbSB[2]||'3rd B',ko:nbData.ko.qf2},
-            {id:'qf3',lbl:'QF3',h:nbSB[0]||'1st B',a:nbSA[3]||'4th A',ko:nbData.ko.qf3},
+            {id:'qf2',lbl:'QF2',h:nbSB[0]||'1st B',a:nbSA[3]||'4th A',ko:nbData.ko.qf2},
+            {id:'qf3',lbl:'QF3',h:nbSA[1]||'2nd A',a:nbSB[2]||'3rd B',ko:nbData.ko.qf3},
             {id:'qf4',lbl:'QF4',h:nbSB[1]||'2nd B',a:nbSA[2]||'3rd A',ko:nbData.ko.qf4}
         ];
         qfAdminHtml='<div class="card" style="border:1.5px solid #a855f7"><h3 style="color:#a855f7">NB-5a. QUARTER FINALS</h3>'
@@ -850,7 +850,7 @@ function nbSaveQF() {
     if(grps.length<2)return;
     var nbSA=[...(nbData.groups[grps[0]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);});
     var nbSB=[...(nbData.groups[grps[1]]||[])].sort(function(a,b){return (nbGetStats(b).pts-nbGetStats(a).pts)||(nbGetStats(b).gd-nbGetStats(a).gd);});
-    var defs=[{id:'qf1',h:nbSA[0]||'1st A',a:nbSB[3]||'4th B'},{id:'qf2',h:nbSA[1]||'2nd A',a:nbSB[2]||'3rd B'},{id:'qf3',h:nbSB[0]||'1st B',a:nbSA[3]||'4th A'},{id:'qf4',h:nbSB[1]||'2nd B',a:nbSA[2]||'3rd A'}];
+    var defs=[{id:'qf1',h:nbSA[0]||'1st A',a:nbSB[3]||'4th B'},{id:'qf2',h:nbSB[0]||'1st B',a:nbSA[3]||'4th A'},{id:'qf3',h:nbSA[1]||'2nd A',a:nbSB[2]||'3rd B'},{id:'qf4',h:nbSB[1]||'2nd B',a:nbSA[2]||'3rd A'}];
     var qfW=function(res,h,a){if(res&&res.includes('-')){var p=res.split('-');return parseInt(p[0])>parseInt(p[1])?h:a;}return null;};
     defs.forEach(function(q){
         var dt=document.getElementById('nb_k'+q.id+'dt'),tm=document.getElementById('nb_k'+q.id+'tm'),pt=document.getElementById('nb_k'+q.id+'pt'),rs=document.getElementById('nb_k'+q.id+'rs');
