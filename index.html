@@ -445,12 +445,33 @@ function startLiveMatch() {
             home=_lMap[type][0]; away=_lMap[type][1]; id=type.toUpperCase()+'-'+Date.now();
         /* ===== END QF LIVE ADDITION ===== */
         } else if (type === 's1') {
-            home = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[0] || '1st A';
-            away = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[1] || '2nd B';
+            /* Use QF winners if QF mode, else fall back to group standings */
+            var _lHas5 = grps.length>=2 && (data.groups[grps[0]]||[]).length===5 && (data.groups[grps[1]]||[]).length===5;
+            if(_lHas5) {
+                var _lQfW=function(ko,h,a){if(ko&&ko.win)return ko.win;if(ko&&ko.res&&ko.res.includes('-')){var p=ko.res.split('-');return parseInt(p[0])>parseInt(p[1])?h:a;}return null;};
+                var _lSA=[...(data.groups[grps[0]]||[])].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd||getStats(b).gf-getStats(a).gf);
+                var _lSB=[...(data.groups[grps[1]]||[])].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd||getStats(b).gf-getStats(a).gf);
+                var _lQfDefs=[{h:_lSA[0]||'1st A',a:_lSB[3]||'4th B',ko:data.ko.qf1||{}},{h:_lSB[0]||'1st B',a:_lSA[3]||'4th A',ko:data.ko.qf2||{}},{h:_lSA[1]||'2nd A',a:_lSB[2]||'3rd B',ko:data.ko.qf3||{}},{h:_lSB[1]||'2nd B',a:_lSA[2]||'3rd A',ko:data.ko.qf4||{}}];
+                var _lWins=_lQfDefs.map(function(q){return _lQfW(q.ko,q.h,q.a);});
+                home = _lWins[0] || 'QF1 Winner'; away = _lWins[2] || 'QF3 Winner';
+            } else {
+                home = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[0] || '1st A';
+                away = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[1] || '2nd B';
+            }
             id = "SF1-" + Date.now();
         } else if (type === 's2') {
-            home = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[0] || '1st B';
-            away = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[1] || '2nd A';
+            var _l2Has5 = grps.length>=2 && (data.groups[grps[0]]||[]).length===5 && (data.groups[grps[1]]||[]).length===5;
+            if(_l2Has5) {
+                var _l2QfW=function(ko,h,a){if(ko&&ko.win)return ko.win;if(ko&&ko.res&&ko.res.includes('-')){var p=ko.res.split('-');return parseInt(p[0])>parseInt(p[1])?h:a;}return null;};
+                var _l2SA=[...(data.groups[grps[0]]||[])].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd||getStats(b).gf-getStats(a).gf);
+                var _l2SB=[...(data.groups[grps[1]]||[])].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd||getStats(b).gf-getStats(a).gf);
+                var _l2QfDefs=[{h:_l2SA[0]||'1st A',a:_l2SB[3]||'4th B',ko:data.ko.qf1||{}},{h:_l2SB[0]||'1st B',a:_l2SA[3]||'4th A',ko:data.ko.qf2||{}},{h:_l2SA[1]||'2nd A',a:_l2SB[2]||'3rd B',ko:data.ko.qf3||{}},{h:_l2SB[1]||'2nd B',a:_l2SA[2]||'3rd A',ko:data.ko.qf4||{}}];
+                var _l2Wins=_l2QfDefs.map(function(q){return _l2QfW(q.ko,q.h,q.a);});
+                home = _l2Wins[1] || 'QF2 Winner'; away = _l2Wins[3] || 'QF4 Winner';
+            } else {
+                home = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[0] || '1st B';
+                away = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts)[1] || '2nd A';
+            }
             id = "SF2-" + Date.now();
         } else {
             home = data.ko.s1.win || 'SF1 Winner'; away = data.ko.s2.win || 'SF2 Winner';
@@ -490,7 +511,22 @@ function pushLiveUpdate(id) {
 function renderAdmin() {
     const grps = Object.keys(data.groups).sort();
     let s1H = '1st A', s1A = '2nd B', s2H = '1st B', s2A = '2nd A';
-    if(grps.length >= 2) {
+    const _adHas5 = grps.length >= 2 && (data.groups[grps[0]]||[]).length === 5 && (data.groups[grps[1]]||[]).length === 5;
+    if(_adHas5) {
+        /* QF mode: SF teams come from QF winners, matching user-facing renderAll() logic */
+        var _adQfWin = function(ko, h, a) { if(ko && ko.win) return ko.win; if(ko && ko.res && ko.res.includes('-')) { var p=ko.res.split('-'); return parseInt(p[0])>parseInt(p[1])?h:a; } return null; };
+        var _adSA=[...(data.groups[grps[0]]||[])].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd||getStats(b).gf-getStats(a).gf);
+        var _adSB=[...(data.groups[grps[1]]||[])].sort((a,b)=>getStats(b).pts-getStats(a).pts||getStats(b).gd-getStats(a).gd||getStats(b).gf-getStats(a).gf);
+        var _adQfList=[
+            {h:_adSA[0]||'1st A',a:_adSB[3]||'4th B',ko:data.ko.qf1||{}},
+            {h:_adSB[0]||'1st B',a:_adSA[3]||'4th A',ko:data.ko.qf2||{}},
+            {h:_adSA[1]||'2nd A',a:_adSB[2]||'3rd B',ko:data.ko.qf3||{}},
+            {h:_adSB[1]||'2nd B',a:_adSA[2]||'3rd A',ko:data.ko.qf4||{}}
+        ];
+        var _adWins=_adQfList.map(function(q){return _adQfWin(q.ko,q.h,q.a);});
+        s1H = _adWins[0] || 'QF1 Winner'; s1A = _adWins[2] || 'QF3 Winner';
+        s2H = _adWins[1] || 'QF2 Winner'; s2A = _adWins[3] || 'QF4 Winner';
+    } else if(grps.length >= 2) {
         s1H = [...data.groups[grps[0]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[0] || '1st A';
         s1A = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[1] || '2nd B';
         s2H = [...data.groups[grps[1]]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd)[0] || '1st B';
