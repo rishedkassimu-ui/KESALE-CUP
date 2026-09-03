@@ -31,6 +31,7 @@
         background: linear-gradient(rgba(234, 88, 12, 0.6), rgba(124, 45, 18, 0.88)), 
                     url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80');
         background-size: cover; background-position: center; padding: 80px 20px; text-align: center; border-bottom: 2px solid var(--accent);
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
     }
     .hero h1 { font-size: 3.5rem; margin: 0; color: var(--gold); text-transform: uppercase; font-weight: 800; cursor: pointer; text-shadow: 0 5px 15px rgba(0,0,0,0.6); }
     .hero p { max-width: 850px; margin: 25px auto; color: #fff7ed; font-size: 1rem; line-height: 1.8; font-weight: 300; }
@@ -43,6 +44,11 @@
     nav::-webkit-scrollbar { display: none; }
     nav button { white-space: nowrap; padding: 10px 22px; border-radius: 30px; border: 1px solid rgba(0,0,0,0.12); background: transparent; color: #78716c; cursor: pointer; font-weight: 600; font-size: 12px; transition: 0.3s; flex-shrink: 0; }
     nav button.active-btn { background: var(--accent); color: white; border-color: var(--accent); box-shadow: 0 4px 15px var(--accent-glow); }
+
+    .team-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .team-block { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 16px 8px; cursor: pointer; }
+    .team-block span:first-child { font-weight: 700; font-size: 1rem; line-height: 1.25; word-break: break-word; }
+    @media (max-width: 480px) { .team-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; } .team-block { padding: 12px 6px; } .team-block span:first-child { font-size: 0.9rem; } }
 
     section { display: none; padding: 30px 20px; max-width: 1000px; margin: 0 auto; animation: fadeInUp 0.5s ease-out; }
     .active { display: block; }
@@ -88,6 +94,18 @@
     .footer { text-align: center; padding: 40px 20px; color: #a8a29e; font-size: 13px; border-top: 1px solid rgba(0,0,0,0.08); margin-top: 50px; }
     .nb-tab-btn { white-space:nowrap; padding:8px 18px; border-radius:20px; border:1px solid #a855f7; background:transparent; color:#a855f7; cursor:pointer; font-weight:600; font-size:11px; transition:0.3s; }
     .nb-tab-active { background:#a855f7; color:white; box-shadow:0 4px 15px rgba(168,85,247,0.35); }
+
+    /* ===== HERO MOTION TEXT ===== */
+    .hero .typewriter-text { border-right: 2px solid var(--gold); white-space: pre-wrap; display: inline-block; max-width: 850px; }
+    .hero .uni-badge { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 14px 0 22px; width: 100%; }
+    .hero .uni-badge::before, .hero .uni-badge::after { content: ''; width: 28px; height: 1px; background: var(--gold); opacity: 0.7; }
+    .hero .uni-badge span { color: var(--gold); font-weight: 600; font-size: 0.78rem; letter-spacing: 3px; text-transform: uppercase; }
+    .hero .hero-tagline { margin-top: 4px; font-weight: 700; font-size: 1.15rem; color: white; letter-spacing: 0.5px; display: none; opacity: 0; transition: opacity 0.6s ease-in; }
+    .hero .hero-tagline.show { display: block; opacity: 1; }
+    .hero .hero-tagline .cup-word { color: var(--gold); }
+    .hero .hero-tagline #heroRotateText { color: #fff; }
+    .hero .type-cursor { display:inline-block; margin-left:2px; animation: heroCursorBlink 0.8s steps(1) infinite; }
+    @keyframes heroCursorBlink { 0%,50%{opacity:1;} 51%,100%{opacity:0;} }
 </style>
 </head>
 <body>
@@ -96,11 +114,12 @@
 
 <div class="hero">
     <h1>KESALE CUP 2026</h1>
-    <div style="color: white; font-weight: 600; letter-spacing: 2px; margin-top: -5px; opacity: 1;">MZUMBE UNIVERSITY</div>
-    <p>Prestigious tournament by Dr. Anosisye Kesale fostering talent and unity. The winning team is awarded a cow.</p>
+    <div class="uni-badge"><span>Mzumbe University</span></div>
+    <p id="heroSubtitle" class="typewriter-text" data-text="Prestigious tournament by Dr. Anosisye Kesale fostering talent and unity. The winning team is awarded a cow."></p>
+    <p class="hero-tagline" id="heroTagline"><span class="cup-word">The cup</span> <span id="heroRotateText"></span><span class="type-cursor">|</span></p>
 </div>
 
-<nav>
+<nav id="mainNav">
     <button onclick="showSec('teams', this)" class="active-btn">TEAMS</button>
     <button onclick="showSec('groups', this)">STANDINGS</button>
     <button onclick="showSec('fixtures', this)">FIXTURES</button>
@@ -110,8 +129,7 @@
     <button onclick="showSec('final', this)">FINAL</button>
     <button onclick="showSec('leaderboard', this)">LEADERBOARD</button>
     <button onclick="showSec('updates', this)" id="btnUpdates">UPDATES</button>
-    <button onclick="showSec('netball', this)" style="color:#a855f7; border-color:#a855f7; font-weight:800;">🏐 NETBALL</button>
-    <button onclick="showSec('registered-players', this)" style="color:#10b981; border-color:#10b981; font-weight:800;">👥 REGISTERED PLAYERS</button>
+    <button onclick="showSec('registered-players', this)" style="color:#10b981; border-color:#10b981;">REGISTERED PLAYERS</button>
 </nav>
 
 <section id="teams" class="active"></section>
@@ -123,28 +141,6 @@
 <section id="final"></section>
 <section id="leaderboard"></section>
 <section id="updates"><h2>Latest Updates</h2><div id="updatesList"></div></section>
-
-<!-- ===== NETBALL SECTION ===== -->
-<section id="netball">
-    <div style="text-align:center;margin-bottom:30px;">
-        <h2 style="color:#a855f7;">🏐 NETBALL</h2>
-        <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:10px;">
-            <button onclick="nbShowTab('nb-teams')" id="nb-btn-teams" class="nb-tab-btn nb-tab-active">TEAMS</button>
-            <button onclick="nbShowTab('nb-groups')" id="nb-btn-groups" class="nb-tab-btn">STANDINGS</button>
-            <button onclick="nbShowTab('nb-fixtures')" id="nb-btn-fixtures" class="nb-tab-btn">FIXTURES</button>
-            <button onclick="nbShowTab('nb-quarters')" id="nb-btn-quarters" class="nb-tab-btn" style="display:none">QUARTER FINAL</button>
-            <button onclick="nbShowTab('nb-semis')" id="nb-btn-semis" class="nb-tab-btn">SEMI FINAL</button>
-            <button onclick="nbShowTab('nb-final')" id="nb-btn-final" class="nb-tab-btn">FINAL</button>
-        </div>
-    </div>
-    <div id="nb-teams"></div>
-    <div id="nb-groups" style="display:none"></div>
-    <div id="nb-fixtures" style="display:none"></div>
-    <div id="nb-quarters" style="display:none"></div>
-    <div id="nb-semis" style="display:none"></div>
-    <div id="nb-final" style="display:none"></div>
-</section>
-<!-- ===== END NETBALL SECTION ===== -->
 
 <!-- ===== REGISTERED PLAYERS SECTION ===== -->
 <section id="registered-players">
@@ -175,7 +171,6 @@
 <div class="footer">All rights reserved, a product by <span id="rishedTrigger" onclick="showSec('admin', null)" style="color:#f97316; cursor:pointer; font-weight:700;">Rished Kassimu</span></div>
 <div class="overlay" id="overlay" onclick="closeModal()"></div>
 <div class="modal" id="teamModal"></div>
-
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyAdqvG4rf46xvyO28D80W5VrNlCgH3SDnU",
@@ -330,7 +325,7 @@ function getStats(name) {
 }
 
 function renderAll() {
-    document.getElementById('teams').innerHTML = "<h2>Clubs</h2>" + data.teams.map(t => `<div class="card" onclick="openTeam('${t}')" style="cursor:pointer; display:flex; justify-content:space-between; align-items:center"><span style="font-weight:600">${t}</span> <span style="color:var(--accent); font-weight:800;">&rsaquo;</span></div>`).join('');
+    document.getElementById('teams').innerHTML = "<h2>Clubs</h2><p style=\"text-align:center;color:#78716c;font-size:12px;margin-top:-15px;margin-bottom:20px;\">Click the team button to see team details.</p><div class=\"team-grid\">" + data.teams.map(t => `<div class="card team-block" onclick="openTeam('${t}')"><span>${t}</span><span style="color:var(--accent); font-weight:800;">&rsaquo;</span></div>`).join('') + "</div>";
     let gHtml = "";
     Object.keys(data.groups).sort().forEach(g => {
         let sorted = [...data.groups[g]].sort((a,b)=>getStats(b).pts-getStats(a).pts || getStats(b).gd-getStats(a).gd || getStats(b).gf-getStats(a).gf);
@@ -730,8 +725,8 @@ function nbRenderAll() {
 
     /* Teams */
     var teamsEl = document.getElementById('nb-teams');
-    if(teamsEl) teamsEl.innerHTML = '<h2 style="color:#a855f7">Netball Clubs</h2>' +
-        (nbData.teams||[]).map(function(t){ return '<div class="card" style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600">'+t+'</span><span style="color:#a855f7;font-weight:800;">&rsaquo;</span></div>'; }).join('');
+    if(teamsEl) teamsEl.innerHTML = '<h2 style="color:#a855f7">Netball Clubs</h2><p style="text-align:center;color:#78716c;font-size:12px;margin-top:-15px;margin-bottom:20px;">Click the team button to see team details.</p><div class="team-grid">' +
+        (nbData.teams||[]).map(function(t){ return '<div class="card team-block"><span>'+t+'</span><span style="color:#a855f7;font-weight:800;">&rsaquo;</span></div>'; }).join('') + '</div>';
 
     /* Standings */
     var gHtml='';
@@ -1382,6 +1377,77 @@ function togglePublicView(teamName) {
    END REGISTERED PLAYERS MODULE
    ===================================================== */
 window.onload = load;
+
+/* =====================================================
+   HERO MOTION TEXT — typewriter subtitle + rotating tagline
+   ===================================================== */
+function heroTypeOnce(el, text, speed, onDone){
+    if(!el) return;
+    el.textContent = '';
+    var i = 0;
+    (function step(){
+        if(i < text.length){
+            el.textContent += text.charAt(i);
+            i++;
+            setTimeout(step, speed);
+        } else {
+            el.style.borderRight = 'none';
+            if(typeof onDone === 'function') onDone();
+        }
+    })();
+}
+
+function heroRotatingType(el, phrases, typeSpeed, deleteSpeed, pauseTime){
+    if(!el) return;
+    var idx = 0;
+    (function loop(){
+        var phrase = phrases[idx % phrases.length];
+        var i = 0;
+        (function typeStep(){
+            if(i <= phrase.length){
+                el.textContent = phrase.slice(0, i);
+                i++;
+                setTimeout(typeStep, typeSpeed);
+            } else {
+                setTimeout(deleteStep, pauseTime);
+            }
+        })();
+        function deleteStep(){
+            if(i > 0){
+                i--;
+                el.textContent = phrase.slice(0, i);
+                setTimeout(deleteStep, deleteSpeed);
+            } else {
+                idx++;
+                setTimeout(loop, 300);
+            }
+        }
+    })();
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+    var subEl = document.getElementById('heroSubtitle');
+    var rotateEl = document.getElementById('heroRotateText');
+    var taglineEl = document.getElementById('heroTagline');
+    function startRotation(){
+        if(taglineEl) taglineEl.classList.add('show');
+        if(rotateEl){
+            heroRotatingType(rotateEl, [
+                "that unites hundreds of students",
+                "that exposes student's talents",
+                "that creates memories and history",
+                "that goes beyond fans' expectations",
+                "that entertains students",
+                "that champions dream of",
+                "that creates legends",
+                "that every Team fights for",
+                "that every player want to chase"
+            ], 45, 25, 1400);
+        }
+    }
+    if(subEl) heroTypeOnce(subEl, subEl.getAttribute('data-text') || '', 28, startRotation);
+    else startRotation();
+});
 </script>
 </body>
 </html>
